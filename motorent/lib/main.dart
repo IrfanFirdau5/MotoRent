@@ -40,16 +40,6 @@ class MotoRentApp extends StatelessWidget {
             ),
           ),
         ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-      ),
-      // Change between these two pages for testing:
-      // home: const VehicleListingPage(), // For customer view
-      home: const AdminDashboardPage(), // For admin view
         cardTheme: const CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -63,25 +53,27 @@ class MotoRentApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[300]!),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(
               color: Color(0xFF1E88E5),
               width: 2,
             ),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red),
+          errorBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(color: Colors.red),
           ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red, width: 2),
+          focusedErrorBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(color: Colors.red, width: 2),
           ),
         ),
       ),
-      // Start with Login Page
-      home: const LoginPage(),
+      // Change between these for testing:
+      // home: const VehicleListingPage(), // For customer view
+      // home: const AdminDashboardPage(), // For admin view
+      home: const LoginPage(), // Default starting page
     );
   }
 }
