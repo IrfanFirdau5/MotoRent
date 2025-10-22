@@ -342,7 +342,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => VehicleDetailPage(vehicle: vehicle),
+              builder: (context) => VehicleDetailPage(vehicle: vehicle, userId: 1,),
             ),
           );
         },

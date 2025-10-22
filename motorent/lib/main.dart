@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'screens/login_page.dart';
 import 'screens/vehicle_listing_page.dart';
 import 'screens/admin/admin_dashboard_page.dart';
-import 'screens/login_page.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting();
   runApp(const MotoRentApp());
 }
 
@@ -53,27 +56,27 @@ class MotoRentApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[300]!),
           ),
-          focusedBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            borderSide: BorderSide(
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
               color: Color(0xFF1E88E5),
               width: 2,
             ),
           ),
-          errorBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            borderSide: BorderSide(color: Colors.red),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red),
           ),
-          focusedErrorBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            borderSide: BorderSide(color: Colors.red, width: 2),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
         ),
       ),
-      // Change between these for testing:
       // home: const VehicleListingPage(), // For customer view
       // home: const AdminDashboardPage(), // For admin view
-      home: const LoginPage(), // Default starting page
+      // Start with Login Page
+      home: const LoginPage(),
     );
   }
 }

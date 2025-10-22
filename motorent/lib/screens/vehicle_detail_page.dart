@@ -2,11 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../models/vehicle.dart';
+import 'booking_page.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Vehicle vehicle;
+  final int? userId; // Pass from auth state, can be null if not logged in
 
-  const VehicleDetailPage({Key? key, required this.vehicle}) : super(key: key);
+  const VehicleDetailPage({
+    Key? key,
+    required this.vehicle,
+    this.userId,
+  }) : super(key: key);
+
+  void _navigateToBooking(BuildContext context) {
+    if (userId == null) {
+      // Show login prompt
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text('Please login to book this vehicle.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to login page
+                // Navigator.pushNamed(context, '/login');
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookingPage(
+          vehicle: vehicle,
+          userId: userId!,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +83,6 @@ class VehicleDetailPage extends StatelessWidget {
               ),
             ),
           ),
-  
           // Content
           SliverToBoxAdapter(
             child: Padding(
@@ -83,7 +126,6 @@ class VehicleDetailPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  
                   // Rating
                   if (vehicle.rating != null)
                     Row(
@@ -111,7 +153,6 @@ class VehicleDetailPage extends StatelessWidget {
                       ],
                     ),
                   const SizedBox(height: 20),
-                  
                   // Price Card
                   Container(
                     width: double.infinity,
@@ -153,7 +194,6 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  
                   // Vehicle Information Section
                   const Text(
                     'Vehicle Information',
@@ -163,19 +203,17 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  
                   _buildInfoRow(Icons.directions_car, 'Brand', vehicle.brand),
                   _buildInfoRow(Icons.car_rental, 'Model', vehicle.model),
-                  _buildInfoRow(Icons.confirmation_number, 'License Plate', vehicle.licensePlate),
+                  _buildInfoRow(Icons.confirmation_number, 'License Plate',
+                      vehicle.licensePlate),
                   _buildInfoRow(Icons.store, 'Owner', vehicle.ownerName ?? 'Unknown'),
                   _buildInfoRow(
                     Icons.calendar_today,
                     'Listed Since',
                     DateFormat('dd MMM yyyy').format(vehicle.createdAt),
                   ),
-                  
                   const SizedBox(height: 25),
-                  
                   // Description Section
                   const Text(
                     'Description',
@@ -194,22 +232,13 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  
                   // Book Now Button
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: vehicle.isAvailable
-                          ? () {
-                              // TODO: Navigate to booking page
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Booking feature coming soon!'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            }
+                          ? () => _navigateToBooking(context)
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E88E5),
