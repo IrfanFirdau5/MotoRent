@@ -8,6 +8,8 @@ class User {
   final DateTime createdAt;
   final bool isActive;
   final String? profileImage;
+  final String userType; // 'customer', 'owner', 'driver', 'admin'
+  final DateTime createdAt;
 
   User({
     required this.userId,
@@ -21,6 +23,9 @@ class User {
     this.profileImage,
   });
 
+  });
+
+  // Factory constructor to create a User from JSON
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       userId: json['user_id'] ?? 0,
@@ -37,6 +42,10 @@ class User {
     );
   }
 
+    );
+  }
+
+  // Method to convert User to JSON
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
@@ -65,4 +74,11 @@ class User {
         return userType;
     }
   }
+    };
+  }
+
+  bool get isCustomer => userType.toLowerCase() == 'customer';
+  bool get isOwner => userType.toLowerCase() == 'owner';
+  bool get isDriver => userType.toLowerCase() == 'driver';
+  bool get isAdmin => userType.toLowerCase() == 'admin';
 }

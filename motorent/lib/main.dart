@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/vehicle_listing_page.dart';
 import 'screens/admin/admin_dashboard_page.dart';
+import 'screens/login_page.dart';
 
 void main() {
   runApp(const MotoRentApp());
@@ -49,6 +50,38 @@ class MotoRentApp extends StatelessWidget {
       // Change between these two pages for testing:
       // home: const VehicleListingPage(), // For customer view
       home: const AdminDashboardPage(), // For admin view
+        cardTheme: const CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[50],
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: Color(0xFF1E88E5),
+              width: 2,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+        ),
+      ),
+      // Start with Login Page
+      home: const LoginPage(),
     );
   }
 }

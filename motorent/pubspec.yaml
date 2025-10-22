@@ -38,9 +38,9 @@ flutter:
   uses-material-design: true
 
   # Add assets folder for placeholder images
-  assets:
-    - assets/images/
-    - assets/icons/
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
 
   # Define custom fonts if needed
   # fonts:
