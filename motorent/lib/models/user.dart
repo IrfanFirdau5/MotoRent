@@ -4,6 +4,10 @@ class User {
   final String email;
   final String phone;
   final String address;
+  final String userType; // customer, owner, admin, driver
+  final DateTime createdAt;
+  final bool isActive;
+  final String? profileImage;
   final String userType; // 'customer', 'owner', 'driver', 'admin'
   final DateTime createdAt;
 
@@ -15,6 +19,10 @@ class User {
     required this.address,
     required this.userType,
     required this.createdAt,
+    this.isActive = true,
+    this.profileImage,
+  });
+
   });
 
   // Factory constructor to create a User from JSON
@@ -29,6 +37,11 @@ class User {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
+      isActive: json['is_active'] ?? true,
+      profileImage: json['profile_image'],
+    );
+  }
+
     );
   }
 
@@ -42,6 +55,25 @@ class User {
       'address': address,
       'user_type': userType,
       'created_at': createdAt.toIso8601String(),
+      'is_active': isActive,
+      'profile_image': profileImage,
+    };
+  }
+
+  String get userTypeDisplay {
+    switch (userType.toLowerCase()) {
+      case 'customer':
+        return 'Customer';
+      case 'owner':
+        return 'Car Owner';
+      case 'admin':
+        return 'Administrator';
+      case 'driver':
+        return 'Driver';
+      default:
+        return userType;
+    }
+  }
     };
   }
 
