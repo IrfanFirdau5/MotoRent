@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../models/booking.dart';
 import '../services/booking_service.dart';
+import '../services/review_service.dart';
+import 'add_review_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
   final int userId;
@@ -19,12 +21,14 @@ class MyBookingsPage extends StatefulWidget {
 class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
   final BookingService _bookingService = BookingService();
+  final ReviewService _reviewService = ReviewService();
   late TabController _tabController;
 
   List<Booking> _allBookings = [];
   List<Booking> _upcomingBookings = [];
   List<Booking> _pastBookings = [];
   List<Booking> _cancelledBookings = [];
+  Map<int, bool> _reviewedBookings = {}; // Track which bookings have reviews
 
   bool _isLoading = true;
   String _errorMessage = '';
@@ -49,8 +53,13 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      // Use mock data for testing - switch to fetchUserBookings when backend is ready
       final bookings = await _bookingService.mockFetchUserBookings(widget.userId);
+
+      // Check which bookings have been reviewed
+      for (var booking in bookings) {
+        final hasReviewed = await _reviewService.mockHasUserReviewed(booking.bookingId);
+        _reviewedBookings[booking.bookingId] = hasReviewed;
+      }
 
       setState(() {
         _allBookings = bookings;
@@ -67,7 +76,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   void _categorizeBookings() {
     final now = DateTime.now();
-    
+
     _upcomingBookings = _allBookings.where((booking) {
       return (booking.bookingStatus.toLowerCase() == 'confirmed' ||
               booking.bookingStatus.toLowerCase() == 'pending') &&
@@ -84,7 +93,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       return booking.bookingStatus.toLowerCase() == 'cancelled';
     }).toList();
 
-    // Sort by date
     _upcomingBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _pastBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
     _cancelledBookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -127,7 +135,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   }
 
   Future<void> _cancelBooking(int bookingId) async {
-    // Show loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -140,7 +147,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       final result = await _bookingService.mockCancelBooking(bookingId);
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
 
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +156,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
             backgroundColor: Colors.green,
           ),
         );
-        _loadBookings(); // Refresh bookings
+        _loadBookings();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -160,7 +167,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -168,6 +175,23 @@ class _MyBookingsPageState extends State<MyBookingsPage>
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _navigateToAddReview(Booking booking) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddReviewPage(
+          booking: booking,
+          userId: widget.userId,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // Review was submitted, refresh the list
+      _loadBookings();
     }
   }
 
@@ -212,7 +236,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         ),
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
                 color: const Color(0xFF1E88E5),
                 size: 50.0,
@@ -301,6 +325,9 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   Widget _buildBookingCard(Booking booking, String type) {
     final canCancel = type == 'upcoming' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
+    
+    final canReview = type == 'past' && 
+        (_reviewedBookings[booking.bookingId] == false);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -313,7 +340,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with status
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -345,8 +371,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
             const SizedBox(height: 12),
-
-            // Vehicle info
             Row(
               children: [
                 Container(
@@ -388,8 +412,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
             const SizedBox(height: 16),
-
-            // Dates
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -447,8 +469,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ),
             ),
             const SizedBox(height: 16),
-
-            // Price and actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -492,6 +512,56 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                   ),
               ],
             ),
+            // Add Review Button for completed bookings
+            if (canReview) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _navigateToAddReview(booking),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E88E5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.star, color: Colors.white),
+                  label: const Text(
+                    'Write a Review',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            // Show "Reviewed" badge if already reviewed
+            if (type == 'past' && _reviewedBookings[booking.bookingId] == true) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Review Submitted',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
