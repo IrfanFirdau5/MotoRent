@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/vehicle_listing_page.dart';
+import 'screens/admin/admin_dashboard_page.dart';
 
 void main() {
   runApp(const MotoRentApp());
@@ -38,16 +39,16 @@ class MotoRentApp extends StatelessWidget {
             ),
           ),
         ),
-        cardTheme: const CardThemeData(
-  elevation: 2,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(15)),
-  ),
-),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
       ),
-      // Start with the Vehicle Listing Page
-      // Later, you can change this to your login/home page
-      home: const VehicleListingPage(),
+      // Change between these two pages for testing:
+      // home: const VehicleListingPage(), // For customer view
+      home: const AdminDashboardPage(), // For admin view
     );
   }
 }
