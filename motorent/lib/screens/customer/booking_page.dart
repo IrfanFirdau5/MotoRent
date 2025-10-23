@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import '../models/vehicle.dart';
-import '../models/booking.dart';
-import '../services/booking_service.dart';
+import '../../../models/vehicle.dart';
+import '../../../models/booking.dart';
+import '../../../services/booking_service.dart';
 import 'booking_confirmation_page.dart';
 
 class BookingPage extends StatefulWidget {
   final Vehicle vehicle;
-  final int userId; // Pass this from your auth state
+  final int userId;
 
   const BookingPage({
     Key? key,
@@ -22,44 +22,35 @@ class BookingPage extends StatefulWidget {
 
 class _BookingPageState extends State<BookingPage> {
   final BookingService _bookingService = BookingService();
-  
   DateTime _focusedDay = DateTime.now();
   DateTime? _startDate;
   DateTime? _endDate;
-  
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
-  
   bool _isLoading = false;
-  
+
   // Blocked dates (example: already booked dates)
   final List<DateTime> _blockedDates = [];
 
   @override
   void initState() {
     super.initState();
-    // Set minimum date to today
     _focusedDay = DateTime.now();
   }
 
   bool _isDayBlocked(DateTime day) {
-    return _blockedDates.any((blockedDate) =>
-        isSameDay(blockedDate, day));
+    return _blockedDates.any((blockedDate) => isSameDay(blockedDate, day));
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _focusedDay = focusedDay;
-      
       if (_startDate == null || _endDate != null) {
-        // Start new selection
         _startDate = selectedDay;
         _endDate = null;
       } else if (selectedDay.isBefore(_startDate!)) {
-        // Selected date is before start date, make it the new start
         _startDate = selectedDay;
       } else {
-        // Complete the range
         _endDate = selectedDay;
       }
     });
@@ -117,9 +108,9 @@ class _BookingPageState extends State<BookingPage> {
         startDate: _startDate!,
         endDate: _endDate!,
         totalPrice: _calculateTotalPrice(),
-        userName: 'John Doe', // Get from auth state
+        userName: 'John Doe',
         vehicleName: widget.vehicle.fullName,
-        userPhone: '0123456789', // Get from auth state
+        userPhone: '0123456789',
       );
 
       setState(() {
@@ -128,7 +119,6 @@ class _BookingPageState extends State<BookingPage> {
 
       if (result['success']) {
         if (!mounted) return;
-        
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -140,7 +130,6 @@ class _BookingPageState extends State<BookingPage> {
         );
       } else {
         if (!mounted) return;
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
@@ -154,7 +143,6 @@ class _BookingPageState extends State<BookingPage> {
       });
 
       if (!mounted) return;
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -265,33 +253,25 @@ class _BookingPageState extends State<BookingPage> {
               calendarFormat: _calendarFormat,
               rangeSelectionMode: _rangeSelectionMode,
               startingDayOfWeek: StartingDayOfWeek.monday,
-              
               selectedDayPredicate: (day) {
                 return isSameDay(_startDate, day);
               },
-              
               rangeStartDay: _startDate,
               rangeEndDay: _endDate,
-              
               onDaySelected: _onDaySelected,
               onRangeSelected: _onRangeSelected,
-              
               onFormatChanged: (format) {
                 setState(() {
                   _calendarFormat = format;
                 });
               },
-              
               onPageChanged: (focusedDay) {
                 _focusedDay = focusedDay;
               },
-              
               enabledDayPredicate: (day) {
-                // Disable past dates and blocked dates
                 return !day.isBefore(DateTime.now().subtract(const Duration(days: 1))) &&
                     !_isDayBlocked(day);
               },
-              
               calendarStyle: CalendarStyle(
                 todayDecoration: BoxDecoration(
                   color: Colors.orange[300],
@@ -316,7 +296,6 @@ class _BookingPageState extends State<BookingPage> {
                 ),
                 outsideDaysVisible: false,
               ),
-              
               headerStyle: const HeaderStyle(
                 formatButtonVisible: true,
                 titleCentered: true,

@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../models/vehicle.dart';
 import '../services/vehicle_service.dart';
-import 'vehicle_detail_page.dart';
+import 'customer/vehicle_detail_page.dart';
 
 class VehicleListingPage extends StatefulWidget {
   const VehicleListingPage({Key? key}) : super(key: key);

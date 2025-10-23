@@ -1,56 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import '../models/vehicle.dart';
+import '../../../models/vehicle.dart';
+import 'view_reviews_page.dart';
 import 'booking_page.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Vehicle vehicle;
-  final int? userId; // Pass from auth state, can be null if not logged in
+  final int userId;
 
   const VehicleDetailPage({
     Key? key,
     required this.vehicle,
-    this.userId,
+    required this.userId,
   }) : super(key: key);
-
-  void _navigateToBooking(BuildContext context) {
-    if (userId == null) {
-      // Show login prompt
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text('Please login to book this vehicle.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to login page
-                // Navigator.pushNamed(context, '/login');
-              },
-              child: const Text('Login'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BookingPage(
-          vehicle: vehicle,
-          userId: userId!,
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +46,7 @@ class VehicleDetailPage extends StatelessWidget {
               ),
             ),
           ),
+
           // Content
           SliverToBoxAdapter(
             child: Padding(
@@ -109,9 +73,7 @@ class VehicleDetailPage extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: vehicle.isAvailable
-                              ? Colors.green
-                              : Colors.red,
+                          color: vehicle.isAvailable ? Colors.green : Colors.red,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -126,6 +88,7 @@ class VehicleDetailPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
+
                   // Rating
                   if (vehicle.rating != null)
                     Row(
@@ -153,6 +116,7 @@ class VehicleDetailPage extends StatelessWidget {
                       ],
                     ),
                   const SizedBox(height: 20),
+
                   // Price Card
                   Container(
                     width: double.infinity,
@@ -194,6 +158,99 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 25),
+
+                  // Reviews Section
+                  if (vehicle.rating != null && vehicle.reviewCount != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Reviews & Ratings',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ViewReviewsPage(
+                                      vehicle: vehicle,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('View All'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Column(
+                                  children: [
+                                    Text(
+                                      vehicle.rating!.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1E88E5),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: List.generate(5, (index) {
+                                        return Icon(
+                                          index < vehicle.rating!.round()
+                                              ? Icons.star
+                                              : Icons.star_border,
+                                          size: 20,
+                                          color: Colors.amber,
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${vehicle.reviewCount} reviews',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildRatingBar(5, 0.7),
+                                      _buildRatingBar(4, 0.2),
+                                      _buildRatingBar(3, 0.05),
+                                      _buildRatingBar(2, 0.03),
+                                      _buildRatingBar(1, 0.02),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 25),
+                      ],
+                    ),
+
                   // Vehicle Information Section
                   const Text(
                     'Vehicle Information',
@@ -203,17 +260,19 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 15),
+
                   _buildInfoRow(Icons.directions_car, 'Brand', vehicle.brand),
                   _buildInfoRow(Icons.car_rental, 'Model', vehicle.model),
-                  _buildInfoRow(Icons.confirmation_number, 'License Plate',
-                      vehicle.licensePlate),
+                  _buildInfoRow(Icons.confirmation_number, 'License Plate', vehicle.licensePlate),
                   _buildInfoRow(Icons.store, 'Owner', vehicle.ownerName ?? 'Unknown'),
                   _buildInfoRow(
                     Icons.calendar_today,
                     'Listed Since',
                     DateFormat('dd MMM yyyy').format(vehicle.createdAt),
                   ),
+
                   const SizedBox(height: 25),
+
                   // Description Section
                   const Text(
                     'Description',
@@ -232,13 +291,25 @@ class VehicleDetailPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  // Book Now Button
+
+                  // Book Now Button - FIXED
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: vehicle.isAvailable
-                          ? () => _navigateToBooking(context)
+                          ? () {
+                              // Navigate to booking page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BookingPage(
+                                    vehicle: vehicle,
+                                    userId: userId,
+                                  ),
+                                ),
+                              );
+                            }
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E88E5),
@@ -260,6 +331,36 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingBar(int stars, double percentage) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$stars',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.star, size: 12, color: Colors.amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: percentage,
+                minHeight: 6,
+                backgroundColor: Colors.grey[300],
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF1E88E5),
+                ),
               ),
             ),
           ),

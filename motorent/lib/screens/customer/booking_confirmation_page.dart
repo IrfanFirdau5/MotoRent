@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/booking.dart';
-import '../models/vehicle.dart';
-import 'my_bookings_page.dart';
+import '../../models/booking.dart';
+import '../../models/vehicle.dart';
+import '../my_bookings_page.dart';
 
 class BookingConfirmationPage extends StatelessWidget {
   final Booking booking;
