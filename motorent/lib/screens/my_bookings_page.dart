@@ -1,3 +1,4 @@
+import './vehicle_listing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -178,6 +179,22 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         title: const Text('My Bookings'),
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
+        actions: [
+    // Add this home button
+    IconButton(
+      icon: const Icon(Icons.home),
+      tooltip: 'Home',
+      onPressed: () {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const VehicleListingPage(),
+          ),
+          (route) => false,
+        );
+      },
+    ),
+  ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
