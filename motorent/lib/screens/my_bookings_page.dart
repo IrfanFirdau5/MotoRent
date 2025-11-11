@@ -1,9 +1,12 @@
-import './vehicle_listing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../models/booking.dart';
-import '../services/booking_service.dart';
+import '../../models/booking.dart';
+import '../../models/vehicle.dart';
+import '../../services/booking_service.dart';
+import '../../services/vehicle_service.dart';
+import 'customer/submit_review_page.dart';
+import 'vehicle_listing_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
   final int userId;
@@ -20,15 +23,18 @@ class MyBookingsPage extends StatefulWidget {
 class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
   final BookingService _bookingService = BookingService();
+  final VehicleService _vehicleService = VehicleService();
   late TabController _tabController;
 
   List<Booking> _allBookings = [];
   List<Booking> _upcomingBookings = [];
   List<Booking> _pastBookings = [];
   List<Booking> _cancelledBookings = [];
-
   bool _isLoading = true;
   String _errorMessage = '';
+
+  // Track which bookings have reviews
+  Set<int> _reviewedBookings = {};
 
   @override
   void initState() {
@@ -50,9 +56,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      // Use mock data for testing - switch to fetchUserBookings when backend is ready
       final bookings = await _bookingService.mockFetchUserBookings(widget.userId);
-
       setState(() {
         _allBookings = bookings;
         _categorizeBookings();
@@ -68,7 +72,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   void _categorizeBookings() {
     final now = DateTime.now();
-    
     _upcomingBookings = _allBookings.where((booking) {
       return (booking.bookingStatus.toLowerCase() == 'confirmed' ||
               booking.bookingStatus.toLowerCase() == 'pending') &&
@@ -128,7 +131,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   }
 
   Future<void> _cancelBooking(int bookingId) async {
-    // Show loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -139,9 +141,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
     try {
       final result = await _bookingService.mockCancelBooking(bookingId);
-
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
 
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,7 +151,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
             backgroundColor: Colors.green,
           ),
         );
-        _loadBookings(); // Refresh bookings
+        _loadBookings();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -161,12 +162,68 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
           backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _writeReview(Booking booking) async {
+    // Get vehicle details
+    Vehicle? vehicle;
+    try {
+      final vehicles = await _vehicleService.fetchMockVehicles();
+      vehicle = vehicles.firstWhere(
+        (v) => v.vehicleId == booking.vehicleId,
+        orElse: () => Vehicle(
+          vehicleId: booking.vehicleId,
+          ownerId: 0,
+          brand: 'Unknown',
+          model: 'Vehicle',
+          licensePlate: '',
+          pricePerDay: 0,
+          description: '',
+          availabilityStatus: 'unavailable',
+          imageUrl: '',
+          createdAt: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to load vehicle details'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Navigate to review page
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SubmitReviewPage(
+          vehicle: vehicle!,
+          bookingId: booking.bookingId,
+          userId: widget.userId,
+        ),
+      ),
+    );
+
+    // If review was submitted successfully
+    if (result == true) {
+      setState(() {
+        _reviewedBookings.add(booking.bookingId);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for your review!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -180,21 +237,20 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
         actions: [
-    // Add this home button
-    IconButton(
-      icon: const Icon(Icons.home),
-      tooltip: 'Home',
-      onPressed: () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const VehicleListingPage(),
+          IconButton(
+            icon: const Icon(Icons.home),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VehicleListingPage(),
+                ),
+                (route) => false,
+              );
+            },
           ),
-          (route) => false,
-        );
-      },
-    ),
-  ],
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -318,6 +374,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   Widget _buildBookingCard(Booking booking, String type) {
     final canCancel = type == 'upcoming' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
+    final canReview = type == 'past' && !_reviewedBookings.contains(booking.bookingId);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -509,6 +566,60 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                   ),
               ],
             ),
+
+            // Review button for completed bookings
+            if (canReview) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _writeReview(booking),
+                  icon: const Icon(Icons.rate_review, size: 20),
+                  label: const Text(
+                    'Write a Review',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E88E5),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            // Already reviewed indicator
+            if (type == 'past' && _reviewedBookings.contains(booking.bookingId)) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Review Submitted',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
