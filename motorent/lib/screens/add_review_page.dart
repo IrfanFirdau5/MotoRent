@@ -53,7 +53,7 @@ class _AddReviewPageState extends State<AddReviewPage> {
           vehicleId: widget.booking.vehicleId,
           rating: _rating,
           comment: _commentController.text.trim(),
-          userName: widget.booking.userName,
+          userName: widget.booking.userName ?? 'Unknow User',
         );
 
         setState(() {
