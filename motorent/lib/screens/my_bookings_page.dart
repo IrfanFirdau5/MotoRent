@@ -88,7 +88,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       return booking.bookingStatus.toLowerCase() == 'cancelled';
     }).toList();
 
-    // Sort by date
     _upcomingBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _pastBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
     _cancelledBookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -285,7 +284,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         ),
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
                 color: const Color(0xFF1E88E5),
                 size: 50.0,
@@ -387,7 +386,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with status
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -419,8 +417,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
             const SizedBox(height: 12),
-
-            // Vehicle info
             Row(
               children: [
                 Container(
@@ -462,8 +458,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
             const SizedBox(height: 16),
-
-            // Dates
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -521,8 +515,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ),
             ),
             const SizedBox(height: 16),
-
-            // Price and actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
