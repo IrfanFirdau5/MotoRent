@@ -4,7 +4,8 @@ import '../services/auth_service.dart';
 import '../models/user.dart';
 import 'vehicle_listing_page.dart';
 import 'register_page.dart';
-import 'owner/owner_dashboard_page.dart';
+import 'driver/driver_dashboard_page.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -60,26 +61,25 @@ class _LoginPageState extends State<LoginPage> {
           );
 
           // Navigate to appropriate page based on user type
-         // Navigate based on user type
-        if (user.userType.toLowerCase() == 'owner') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OwnerDashboardPage(
-                ownerId: user.userId,
-                ownerName: user.name,
+          if (user.userType.toLowerCase() == 'driver') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DriverDashboardPage(driver: user),
               ),
-            ),
-          );
+            );
+          } else {
+            // For customers and owners, navigate to vehicle listing
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const VehicleListingPage(),
+              ),
+            );
+          }
         } else {
-          // Other user types go to vehicle listing
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const VehicleListingPage(),
-            ),
-          );
-        }
+          if (!mounted) return;
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),

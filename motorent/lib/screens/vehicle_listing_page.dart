@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../models/vehicle.dart';
+import '../models/user.dart';
 import '../services/vehicle_service.dart';
 import 'customer/vehicle_detail_page.dart';
+import 'customer/user_profile_page.dart';
 
 class VehicleListingPage extends StatefulWidget {
   const VehicleListingPage({Key? key}) : super(key: key);
@@ -259,6 +261,30 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
             tooltip: 'Filter',
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_circle),
+            onPressed: () {
+              // Navigate to profile page
+              // TODO: Replace with actual logged-in user data
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserProfilePage(
+                    user: User(
+                      userId: 1,
+                      name: 'John Doe',
+                      email: 'customer@test.com',
+                      phone: '0123456789',
+                      address: 'Kuching, Sarawak',
+                      userType: 'customer',
+                      createdAt: DateTime.now(),
+                    ),
+                  ),
+                ),
+              );
+            },
+            tooltip: 'Profile',
           ),
         ],
       ),
