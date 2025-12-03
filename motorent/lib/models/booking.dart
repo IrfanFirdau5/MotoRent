@@ -10,6 +10,10 @@ class Booking {
   final String? userName;
   final String? vehicleName;
   final String? userPhone;
+  final bool needDriver;
+  final double? driverPrice;
+  final int? driverId;
+  final String? driverName;
 
   Booking({
     required this.bookingId,
@@ -23,6 +27,10 @@ class Booking {
     this.userName,
     this.vehicleName,
     this.userPhone,
+    this.needDriver = false,
+    this.driverPrice,
+    this.driverId,
+    this.driverName,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -44,6 +52,12 @@ class Booking {
       userName: json['user_name'],
       vehicleName: json['vehicle_name'],
       userPhone: json['user_phone'],
+      needDriver: json['need_driver'] ?? false,
+      driverPrice: json['driver_price'] != null 
+          ? (json['driver_price'] as num).toDouble() 
+          : null,
+      driverId: json['driver_id'],
+      driverName: json['driver_name'],
     );
   }
 
@@ -60,6 +74,10 @@ class Booking {
       'user_name': userName,
       'vehicle_name': vehicleName,
       'user_phone': userPhone,
+      'need_driver': needDriver,
+      'driver_price': driverPrice,
+      'driver_id': driverId,
+      'driver_name': driverName,
     };
   }
 
@@ -78,5 +96,12 @@ class Booking {
       default:
         return bookingStatus;
     }
+  }
+
+  double get vehiclePrice {
+    if (needDriver && driverPrice != null) {
+      return totalPrice - driverPrice!;
+    }
+    return totalPrice;
   }
 }

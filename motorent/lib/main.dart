@@ -74,7 +74,7 @@ class MotoRentApp extends StatelessWidget {
         ),
       ),
       // home: const VehicleListingPage(), // For customer view
-      // home: const AdminDashboardPage(), // For admin view
+      //home: const AdminDashboardPage(), // For admin view
       // Start with Login Page
       home: const LoginPage(),
     );

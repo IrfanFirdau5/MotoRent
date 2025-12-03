@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import '../../../models/vehicle.dart';
-import '../../../models/booking.dart';
-import '../../../services/booking_service.dart';
+import '../../models/vehicle.dart';
+import '../../models/booking.dart';
+import '../../services/booking_service.dart';
 import 'booking_confirmation_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -28,6 +28,10 @@ class _BookingPageState extends State<BookingPage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
   bool _isLoading = false;
+  
+  // Driver hire option
+  bool _needDriver = false;
+  final double _driverPricePerDay = 50.0; // RM50 per day for driver
 
   // Blocked dates (example: already booked dates)
   final List<DateTime> _blockedDates = [];
@@ -73,7 +77,20 @@ class _BookingPageState extends State<BookingPage> {
 
   double _calculateTotalPrice() {
     final days = _calculateDays();
+    double vehicleTotal = days * widget.vehicle.pricePerDay;
+    double driverTotal = _needDriver ? (days * _driverPricePerDay) : 0.0;
+    return vehicleTotal + driverTotal;
+  }
+
+  double _calculateVehiclePrice() {
+    final days = _calculateDays();
     return days * widget.vehicle.pricePerDay;
+  }
+
+  double _calculateDriverPrice() {
+    if (!_needDriver) return 0.0;
+    final days = _calculateDays();
+    return days * _driverPricePerDay;
   }
 
   Future<void> _handleBooking() async {
@@ -111,6 +128,8 @@ class _BookingPageState extends State<BookingPage> {
         userName: 'John Doe',
         vehicleName: widget.vehicle.fullName,
         userPhone: '0123456789',
+        needDriver: _needDriver,
+        driverPrice: _needDriver ? _calculateDriverPrice() : null,
       );
 
       setState(() {
@@ -155,6 +174,8 @@ class _BookingPageState extends State<BookingPage> {
   @override
   Widget build(BuildContext context) {
     final days = _calculateDays();
+    final vehiclePrice = _calculateVehiclePrice();
+    final driverPrice = _calculateDriverPrice();
     final totalPrice = _calculateTotalPrice();
 
     return Scaffold(
@@ -305,6 +326,113 @@ class _BookingPageState extends State<BookingPage> {
 
             const SizedBox(height: 20),
 
+            // Driver Option Card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _needDriver ? const Color(0xFF1E88E5) : Colors.grey[300]!,
+                    width: _needDriver ? 2 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E88E5).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.drive_eta,
+                            color: Color(0xFF1E88E5),
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Need a Driver?',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'RM ${_driverPricePerDay.toStringAsFixed(2)}/day',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _needDriver,
+                          onChanged: (value) {
+                            setState(() {
+                              _needDriver = value;
+                            });
+                          },
+                          activeColor: const Color(0xFF1E88E5),
+                        ),
+                      ],
+                    ),
+                    if (_needDriver) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color: Colors.blue[900],
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'A professional driver will be assigned to you after booking confirmation.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue[900],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
             // Selected Dates Info
             if (_startDate != null || _endDate != null)
               Padding(
@@ -370,20 +498,65 @@ class _BookingPageState extends State<BookingPage> {
                       ),
                       if (days > 0) ...[
                         const Divider(height: 24),
+                        // Vehicle price
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Duration: $days day${days > 1 ? 's' : ''}',
+                              'Vehicle ($days day${days > 1 ? 's' : ''})',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'RM ${vehiclePrice.toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                          ],
+                        ),
+                        // Driver price (if selected)
+                        if (_needDriver) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Driver ($days day${days > 1 ? 's' : ''})',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                'RM ${driverPrice.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const Divider(height: 20),
+                        // Total
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             Text(
-                              'Total: RM ${totalPrice.toStringAsFixed(2)}',
+                              'RM ${totalPrice.toStringAsFixed(2)}',
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF1E88E5),
                               ),

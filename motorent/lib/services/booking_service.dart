@@ -13,6 +13,8 @@ class BookingService {
     required DateTime startDate,
     required DateTime endDate,
     required double totalPrice,
+    bool needDriver = false,
+    double? driverPrice,
   }) async {
     try {
       final response = await http.post(
@@ -25,6 +27,8 @@ class BookingService {
           'end_date': endDate.toIso8601String(),
           'total_price': totalPrice,
           'booking_status': 'pending',
+          'need_driver': needDriver,
+          'driver_price': driverPrice,
         }),
       );
 
@@ -130,6 +134,8 @@ class BookingService {
     String? userName,
     String? vehicleName,
     String? userPhone,
+    bool needDriver = false,
+    double? driverPrice,
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
@@ -146,12 +152,16 @@ class BookingService {
       userName: userName,
       vehicleName: vehicleName,
       userPhone: userPhone,
+      needDriver: needDriver,
+      driverPrice: driverPrice,
     );
 
     return {
       'success': true,
       'booking': newBooking,
-      'message': 'Booking created successfully',
+      'message': needDriver 
+          ? 'Booking created successfully with driver service!' 
+          : 'Booking created successfully',
     };
   }
 
@@ -173,6 +183,7 @@ class BookingService {
         userName: 'John Doe',
         vehicleName: 'Toyota Vios',
         userPhone: '0123456789',
+        needDriver: false,
       ),
       Booking(
         bookingId: 1002,
@@ -180,12 +191,14 @@ class BookingService {
         vehicleId: 3,
         startDate: DateTime.now().subtract(const Duration(days: 10)),
         endDate: DateTime.now().subtract(const Duration(days: 7)),
-        totalPrice: 240.00,
+        totalPrice: 390.00,
         bookingStatus: 'completed',
         createdAt: DateTime.now().subtract(const Duration(days: 15)),
         userName: 'John Doe',
         vehicleName: 'Perodua Myvi',
         userPhone: '0123456789',
+        needDriver: true,
+        driverPrice: 150.00,
       ),
       Booking(
         bookingId: 1003,
@@ -199,6 +212,7 @@ class BookingService {
         userName: 'John Doe',
         vehicleName: 'Honda Civic',
         userPhone: '0123456789',
+        needDriver: false,
       ),
     ];
   }
