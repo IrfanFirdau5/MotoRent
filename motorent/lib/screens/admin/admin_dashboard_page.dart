@@ -6,6 +6,7 @@ import 'user_management_page.dart';
 import 'vehicle_management_page.dart';
 import 'booking_management_page.dart';
 import 'report_management_page.dart';
+import 'admin_approval_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({Key? key}) : super(key: key);
@@ -352,6 +353,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           },
                         ),
                         const SizedBox(height: 20),
+
+_buildManagementCard(
+  'Approval Management',
+  'Review driver applications and vehicle listings',
+  Icons.approval,
+  Colors.purple,
+  () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AdminApprovalPage(),
+      ),
+    );
+  },
+),
+
                       ],
                     ),
                   ),
