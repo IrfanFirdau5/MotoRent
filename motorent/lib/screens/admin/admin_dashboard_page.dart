@@ -7,6 +7,7 @@ import 'vehicle_management_page.dart';
 import 'booking_management_page.dart';
 import 'report_management_page.dart';
 import 'admin_approval_page.dart';
+import 'admin_monthly_report_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({Key? key}) : super(key: key);
@@ -353,21 +354,34 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           },
                         ),
                         const SizedBox(height: 20),
-
-_buildManagementCard(
-  'Approval Management',
-  'Review driver applications and vehicle listings',
-  Icons.approval,
-  Colors.purple,
-  () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AdminApprovalPage(),
-      ),
-    );
-  },
-),
+                        _buildManagementCard(
+                          'Approval Management',
+                          'Review driver applications and vehicle listings',
+                         Icons.approval,
+                        Colors.purple,
+                        () {
+                          Navigator.push(
+                           context,
+                           MaterialPageRoute(
+                             builder: (context) => const AdminApprovalPage(),
+                            ),
+                         );
+                        },
+                      ),
+                        _buildManagementCard(
+                          'Monthly Reports',
+                          'View and export monthly performance reports',
+                         Icons.assessment,
+                        Colors.indigo,
+                       () {
+                         Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                             builder: (context) => const AdminMonthlyReportPage(),
+                           ),
+                          );
+                        },
+                     ),
 
                       ],
                     ),

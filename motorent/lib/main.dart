@@ -3,6 +3,7 @@ import 'screens/login_page.dart';
 import 'screens/vehicle_listing_page.dart';
 import 'screens/admin/admin_dashboard_page.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'screens/owner/owner_dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,8 +76,9 @@ class MotoRentApp extends StatelessWidget {
       ),
       // home: const VehicleListingPage(), // For customer view
       home: const AdminDashboardPage(), // For admin view
+      //home: const OwnerDashboardPage(), //For Owner view
       // Start with Login Page
       //home: const LoginPage(),
     );
   }
-}
+} 
