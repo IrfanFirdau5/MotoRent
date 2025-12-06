@@ -15,6 +15,8 @@ dependencies:
   printing: ^5.11.0
   path_provider: ^2.1.1
   
+   # Firebase dependencies
+  firebase_core: ^4.2.1
   cupertino_icons: ^1.0.2
   # For making HTTP requests to backend
   http: ^1.1.0
