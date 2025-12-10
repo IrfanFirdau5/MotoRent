@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+// import 'package:firebase_storage/firebase_storage.dart'; // Disabled - not in plan
+import '../services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -27,6 +29,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _businessNameController = TextEditingController();
   final _ownerIcNumberController = TextEditingController();
   final _businessRegistrationController = TextEditingController();
+
+  final AuthService _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -73,6 +77,7 @@ class _RegisterPageState extends State<RegisterPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to pick image: $e'),
@@ -97,6 +102,7 @@ class _RegisterPageState extends State<RegisterPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to pick image: $e'),
@@ -121,6 +127,7 @@ class _RegisterPageState extends State<RegisterPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to pick image: $e'),
@@ -130,7 +137,29 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  void _handleRegister() {
+  // NOTE: Firebase Storage upload - disabled if not in plan
+  // This method can be enabled when Storage is available
+  Future<String?> _uploadImageToStorage(File imageFile, String path) async {
+    // Return null for now - Storage upload disabled
+    // When Storage is available, uncomment the code below:
+    
+    /*
+    try {
+      final storageRef = FirebaseStorage.instance.ref().child(path);
+      final uploadTask = await storageRef.putFile(imageFile);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+    */
+    
+    // For now, just mark that an image was selected
+    return null;
+  }
+
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       // Additional validation for driver registration
       if (_selectedUserType == 'driver') {
@@ -164,29 +193,122 @@ class _RegisterPageState extends State<RegisterPage> {
         _isLoading = true;
       });
 
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        // Prepare additional data for driver/owner
+        Map<String, dynamic>? additionalData;
+        
+        if (_selectedUserType == 'driver') {
+          // Note: Image upload to Storage is disabled
+          // Images are selected and validated, but not uploaded
+          // When Storage is available, images will be uploaded automatically
+          
+          additionalData = {
+            'ic_number': _icNumberController.text.trim(),
+            'license_number': _licenseNumberController.text.trim(),
+            'license_image_selected': _licenseImage != null,
+            'profile_image_selected': _profileImage != null,
+            'approval_status': 'pending',
+            // Note: These fields will be populated when Storage is enabled
+            // 'license_image_url': null,
+            // 'profile_image_url': null,
+          };
+
+        } else if (_selectedUserType == 'owner') {
+          // Note: Image upload to Storage is disabled
+          // Documents are selected and validated, but not uploaded
+          
+          additionalData = {
+            'business_name': _businessNameController.text.trim(),
+            'owner_ic_number': _ownerIcNumberController.text.trim(),
+            'has_business_registration': _hasBusinessRegistration,
+            'approval_status': 'pending',
+          };
+          
+          if (_hasBusinessRegistration) {
+            additionalData['business_registration_number'] = _businessRegistrationController.text.trim();
+            additionalData['business_document_selected'] = _businessDocumentImage != null;
+            // Note: This field will be populated when Storage is enabled
+            // 'business_document_url': null,
+          }
+        }
+
+        // Register user with Firebase
+        final result = await _authService.register(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          phone: _phoneController.text.trim(),
+          address: _addressController.text.trim(),
+          userType: _selectedUserType,
+          additionalData: additionalData,
+        );
+
         setState(() {
           _isLoading = false;
         });
 
-        // TODO: Implement actual registration logic
-        String message = _selectedUserType == 'driver'
-            ? 'Driver registration submitted! Awaiting approval.'
-            : _selectedUserType == 'owner'
-                ? 'Owner registration submitted! Awaiting approval.'
-                : 'Registration successful!';
-        
+        if (!mounted) return;
+
+        if (result['success']) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          // Show additional info for drivers and owners
+          if (_selectedUserType == 'driver' || _selectedUserType == 'owner') {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Application Submitted'),
+                content: Text(
+                  'Your ${_selectedUserType} application has been submitted successfully. '
+                  'An administrator will review your application within 24-48 hours. '
+                  'You will receive an email notification once your account is approved.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pop(context); // Go back to login
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            // For customers, go back to login immediately
+            Navigator.pop(context);
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            content: Text('Registration failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
-
-        Navigator.pop(context);
-      });
+      }
     }
   }
 

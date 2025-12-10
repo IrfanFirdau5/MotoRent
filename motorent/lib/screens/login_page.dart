@@ -5,6 +5,8 @@ import '../models/user.dart';
 import 'vehicle_listing_page.dart';
 import 'register_page.dart';
 import 'driver/driver_dashboard_page.dart';
+import 'owner/owner_dashboard_page.dart';
+import 'admin/admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -21,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _useMockLogin = false; // Toggle for testing
 
   @override
   void dispose() {
@@ -36,11 +39,16 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        // Use mockLogin for testing - switch to login() when backend is ready
-        final result = await _authService.mockLogin(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
+        // Use Firebase login or mock login based on toggle
+        final result = _useMockLogin
+            ? await _authService.mockLogin(
+                _emailController.text.trim(),
+                _passwordController.text,
+              )
+            : await _authService.login(
+                _emailController.text.trim(),
+                _passwordController.text,
+              );
 
         setState(() {
           _isLoading = false;
@@ -61,22 +69,7 @@ class _LoginPageState extends State<LoginPage> {
           );
 
           // Navigate to appropriate page based on user type
-          if (user.userType.toLowerCase() == 'driver') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DriverDashboardPage(driver: user),
-              ),
-            );
-          } else {
-            // For customers and owners, navigate to vehicle listing
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const VehicleListingPage(),
-              ),
-            );
-          }
+          _navigateToUserPage(user);
         } else {
           if (!mounted) return;
           
@@ -104,6 +97,66 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     }
+  }
+
+  void _navigateToUserPage(User user) {
+    Widget destinationPage;
+
+    switch (user.userType.toLowerCase()) {
+      case 'admin':
+        destinationPage = const AdminDashboardPage();
+        break;
+      case 'driver':
+        destinationPage = DriverDashboardPage(driver: user);
+        break;
+      case 'owner':
+        destinationPage = OwnerDashboardPage(
+          ownerId: user.userId is int ? user.userId : int.tryParse(user.userIdString) ?? 0,
+          ownerName: user.name,
+        );
+        break;
+      case 'customer':
+      default:
+        destinationPage = const VehicleListingPage();
+        break;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => destinationPage),
+    );
+  }
+
+  Future<void> _handleForgotPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _authService.resetPassword(_emailController.text.trim());
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']),
+        backgroundColor: result['success'] ? Colors.green : Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -253,15 +306,7 @@ class _LoginPageState extends State<LoginPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
-                        // TODO: Implement forgot password
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Forgot password feature coming soon!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onPressed: _isLoading ? null : _handleForgotPassword,
                       child: const Text(
                         'Forgot Password?',
                         style: TextStyle(
@@ -354,40 +399,68 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Demo Credentials Info
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Demo Accounts:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[900],
-                          ),
+                  // Mock Login Toggle (for development)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Use Mock Login',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Customer: customer@test.com / customer123',
-                          style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                        ),
-                        Text(
-                          'Owner: owner@test.com / owner123',
-                          style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                        ),
-                        Text(
-                          'Driver: driver@test.com / driver123',
-                          style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                        ),
-                      ],
-                    ),
+                      ),
+                      Switch(
+                        value: _useMockLogin,
+                        onChanged: (value) {
+                          setState(() {
+                            _useMockLogin = value;
+                          });
+                        },
+                        activeColor: const Color(0xFF1E88E5),
+                      ),
+                    ],
                   ),
+                  
+                  // Demo Credentials Info
+                  if (_useMockLogin)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Demo Accounts:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Customer: customer@test.com / customer123',
+                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                          ),
+                          Text(
+                            'Owner: owner@test.com / owner123',
+                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                          ),
+                          Text(
+                            'Driver: driver@test.com / driver123',
+                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                          ),
+                          Text(
+                            'Admin: admin@test.com / admin123',
+                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

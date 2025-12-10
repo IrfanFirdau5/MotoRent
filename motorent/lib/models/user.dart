@@ -1,5 +1,5 @@
 class User {
-  final int userId;
+  final dynamic userId; // Can be int or String (Firebase UID)
   final String name;
   final String email;
   final String phone;
@@ -7,7 +7,7 @@ class User {
   final String userType; // customer, owner, admin, driver
   final DateTime createdAt;
   final bool isActive;
-  final String? profileImage;// 'customer', 'owner', 'driver', 'admin'
+  final String? profileImage;
 
   User({
     required this.userId,
@@ -38,9 +38,6 @@ class User {
     );
   }
 
-  
-  
-
   // Method to convert User to JSON
   Map<String, dynamic> toJson() {
     return {
@@ -70,11 +67,12 @@ class User {
         return userType;
     }
   }
-    
-  
 
   bool get isCustomer => userType.toLowerCase() == 'customer';
   bool get isOwner => userType.toLowerCase() == 'owner';
   bool get isDriver => userType.toLowerCase() == 'driver';
   bool get isAdmin => userType.toLowerCase() == 'admin';
+
+  // Helper method to get user ID as String (useful for Firebase)
+  String get userIdString => userId.toString();
 }
