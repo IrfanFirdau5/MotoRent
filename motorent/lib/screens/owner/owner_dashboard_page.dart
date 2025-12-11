@@ -4,6 +4,7 @@ import 'add_vehicle_page.dart';
 import 'my_vehicles_page.dart';
 import 'owner_bookings_page.dart';
 import 'revenue_overview_page.dart';
+import 'manage_company_drivers_page.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final int ownerId;
@@ -200,23 +201,44 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _buildActionButton(
-                        'View All Bookings',
-                        Icons.calendar_month,
-                        Colors.orange,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => OwnerBookingsPage(
-                                ownerId: widget.ownerId,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionButton(
+                            'View Bookings',
+                            Icons.calendar_month,
+                            Colors.orange,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OwnerBookingsPage(
+                                    ownerId: widget.ownerId,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionButton(
+                            'My Drivers',
+                            Icons.people,
+                            Colors.purple,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ManageCompanyDriversPage(
+                                    ownerId: widget.ownerId,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
 
