@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'add_vehicle_page.dart';
 import 'my_vehicles_page.dart';
 import 'owner_bookings_page.dart';
+import 'revenue_overview_page.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final int ownerId;
@@ -219,7 +220,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Revenue Chart
+                    // Revenue Chart (Updated - Now Tappable)
                     const Text(
                       'Revenue Overview',
                       style: TextStyle(
@@ -228,67 +229,116 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Container(
-                      height: 200,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 5,
+                    InkWell(
+                      onTap: () {
+                        // Navigate to detailed revenue overview page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RevenueOverviewPage(
+                              ownerId: widget.ownerId,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: LineChart(
-                        LineChartData(
-                          gridData: FlGridData(show: false),
-                          titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(15),
+                      child: Container(
+                        height: 200,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 5,
                             ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                                  if (value.toInt() >= 0 && value.toInt() < months.length) {
-                                    return Text(
-                                      months[value.toInt()],
-                                      style: const TextStyle(fontSize: 12),
-                                    );
-                                  }
-                                  return const Text('');
-                                },
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            LineChart(
+                              LineChartData(
+                                gridData: FlGridData(show: false),
+                                titlesData: FlTitlesData(
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                                        if (value.toInt() >= 0 && value.toInt() < months.length) {
+                                          return Text(
+                                            months[value.toInt()],
+                                            style: const TextStyle(fontSize: 12),
+                                          );
+                                        }
+                                        return const Text('');
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                borderData: FlBorderData(show: false),
+                                lineBarsData: [
+                                  LineChartBarData(
+                                    spots: [
+                                      const FlSpot(0, 3000),
+                                      const FlSpot(1, 3500),
+                                      const FlSpot(2, 4200),
+                                      const FlSpot(3, 3800),
+                                      const FlSpot(4, 4500),
+                                      const FlSpot(5, 4567.50),
+                                    ],
+                                    isCurved: true,
+                                    color: const Color(0xFF1E88E5),
+                                    barWidth: 3,
+                                    dotData: FlDotData(show: true),
+                                    belowBarData: BarAreaData(
+                                      show: true,
+                                      color: const Color(0xFF1E88E5).withOpacity(0.1),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: [
-                                const FlSpot(0, 3000),
-                                const FlSpot(1, 3500),
-                                const FlSpot(2, 4200),
-                                const FlSpot(3, 3800),
-                                const FlSpot(4, 4500),
-                                const FlSpot(5, 4567.50),
-                              ],
-                              isCurved: true,
-                              color: const Color(0xFF1E88E5),
-                              barWidth: 3,
-                              dotData: FlDotData(show: true),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: const Color(0xFF1E88E5).withOpacity(0.1),
+                            // Tap indicator overlay
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E88E5).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.touch_app,
+                                      size: 14,
+                                      color: Color(0xFF1E88E5),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Tap for details',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.blue[700],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
