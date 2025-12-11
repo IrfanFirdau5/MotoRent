@@ -5,12 +5,14 @@ import '../../models/booking.dart';
 import '../../models/vehicle.dart';
 import '../../services/booking_service.dart';
 import '../../services/vehicle_service.dart';
+import '../../services/review_service.dart';
 import 'customer/submit_review_page.dart';
 import 'vehicle_listing_page.dart';
+import 'add_review_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
-  final int userId;
-
+  final String userId; // Changed to String for Firebase UID
+  
   const MyBookingsPage({
     Key? key,
     required this.userId,
@@ -24,6 +26,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
   final BookingService _bookingService = BookingService();
   final VehicleService _vehicleService = VehicleService();
+  final ReviewService _reviewService = ReviewService();
   late TabController _tabController;
 
   List<Booking> _allBookings = [];
@@ -33,8 +36,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Track which bookings have reviews
-  Set<int> _reviewedBookings = {};
+  // Track which bookings have reviews (booking_id -> has_review)
+  Map<int, bool> _reviewStatus = {};
 
   @override
   void initState() {
@@ -56,7 +59,19 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      final bookings = await _bookingService.mockFetchUserBookings(widget.userId);
+      final bookings = await _bookingService.mockFetchUserBookings(int.parse(widget.userId));
+      
+      // Check review status for each completed booking
+      for (var booking in bookings) {
+        if (booking.bookingStatus.toLowerCase() == 'completed') {
+          final hasReview = await _reviewService.hasReviewedBooking(
+            widget.userId,
+            booking.bookingId,
+          );
+          _reviewStatus[booking.bookingId] = hasReview;
+        }
+      }
+
       setState(() {
         _allBookings = bookings;
         _categorizeBookings();
@@ -205,26 +220,16 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SubmitReviewPage(
-          vehicle: vehicle!,
-          bookingId: booking.bookingId,
+        builder: (context) => AddReviewPage(
+          booking: booking,
           userId: widget.userId,
         ),
       ),
     );
 
-    // If review was submitted successfully
+    // If review was submitted successfully, reload bookings
     if (result == true) {
-      setState(() {
-        _reviewedBookings.add(booking.bookingId);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thank you for your review!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      _loadBookings(); // This will refresh the review status
     }
   }
 
@@ -286,7 +291,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       body: _isLoading
           ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )
@@ -373,7 +378,12 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   Widget _buildBookingCard(Booking booking, String type) {
     final canCancel = type == 'upcoming' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
-    final canReview = type == 'past' && !_reviewedBookings.contains(booking.bookingId);
+    
+    final canReview = type == 'past' && 
+        booking.bookingStatus.toLowerCase() == 'completed' &&
+        !(_reviewStatus[booking.bookingId] ?? false);
+    
+    final hasReviewed = type == 'past' && (_reviewStatus[booking.bookingId] ?? false);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -559,7 +569,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
 
-            // Review button for completed bookings
+            // Review button for completed bookings without review
             if (canReview) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -586,7 +596,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
             ],
 
             // Already reviewed indicator
-            if (type == 'past' && _reviewedBookings.contains(booking.bookingId)) ...[
+            if (hasReviewed) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,

@@ -4,7 +4,7 @@ import '../services/review_service.dart';
 
 class AddReviewPage extends StatefulWidget {
   final Booking booking;
-  final int userId;
+  final String userId; // Changed to String for Firebase UID
 
   const AddReviewPage({
     Key? key,
@@ -47,22 +47,23 @@ class _AddReviewPageState extends State<AddReviewPage> {
       });
 
       try {
-        final result = await _reviewService.mockSubmitReview(
+        // Submit review to Firebase
+        final result = await _reviewService.submitReview(
           bookingId: widget.booking.bookingId,
           userId: widget.userId,
           vehicleId: widget.booking.vehicleId,
           rating: _rating,
           comment: _commentController.text.trim(),
-          userName: widget.booking.userName ?? 'Unknow User',
+          userName: widget.booking.userName ?? 'Unknown User',
         );
 
         setState(() {
           _isLoading = false;
         });
 
-        if (result['success']) {
-          if (!mounted) return;
+        if (!mounted) return;
 
+        if (result['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
@@ -72,8 +73,6 @@ class _AddReviewPageState extends State<AddReviewPage> {
 
           Navigator.pop(context, true); // Return true to indicate success
         } else {
-          if (!mounted) return;
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']),
@@ -222,6 +221,7 @@ class _AddReviewPageState extends State<AddReviewPage> {
               TextFormField(
                 controller: _commentController,
                 maxLines: 6,
+                maxLength: 500,
                 decoration: InputDecoration(
                   hintText: 'Share your thoughts about the vehicle, service, and overall experience...',
                   border: OutlineInputBorder(

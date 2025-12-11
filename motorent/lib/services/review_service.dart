@@ -1,216 +1,281 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/review.dart';
 
 class ReviewService {
-  static const String baseUrl = 'https://your-api-url.com/api';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String _reviewsCollection = 'reviews';
+
+  // Submit a new review
+  Future<Map<String, dynamic>> submitReview({
+    required int bookingId,
+    required String userId,
+    required int vehicleId,
+    required double rating,
+    required String comment,
+    required String userName,
+  }) async {
+    try {
+      // Check if user has already reviewed this booking
+      final existingReview = await _firestore
+          .collection(_reviewsCollection)
+          .where('booking_id', isEqualTo: bookingId)
+          .where('user_id', isEqualTo: userId)
+          .get();
+
+      if (existingReview.docs.isNotEmpty) {
+        return {
+          'success': false,
+          'message': 'You have already reviewed this booking',
+        };
+      }
+
+      // Create new review document
+      final reviewData = {
+        'booking_id': bookingId,
+        'user_id': userId,
+        'vehicle_id': vehicleId,
+        'user_name': userName,
+        'rating': rating.toInt(),
+        'comment': comment,
+        'created_at': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection(_reviewsCollection).add(reviewData);
+
+      // Update vehicle rating statistics
+      await _updateVehicleRatingStats(vehicleId);
+
+      return {
+        'success': true,
+        'message': 'Review submitted successfully!',
+      };
+    } catch (e) {
+      print('Error submitting review: $e');
+      return {
+        'success': false,
+        'message': 'Failed to submit review: $e',
+      };
+    }
+  }
 
   // Fetch reviews for a specific vehicle
   Future<List<Review>> fetchVehicleReviews(int vehicleId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/vehicles/$vehicleId/reviews'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final querySnapshot = await _firestore
+          .collection(_reviewsCollection)
+          .where('vehicle_id', isEqualTo: vehicleId)
+          .orderBy('created_at', descending: true)
+          .get();
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Review.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load reviews');
-      }
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['review_id'] = doc.id;
+        
+        // Handle Timestamp conversion
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp).toDate().toIso8601String();
+        }
+        
+        return Review.fromJson(data);
+      }).toList();
     } catch (e) {
-      throw Exception('Error fetching reviews: $e');
+      print('Error fetching vehicle reviews: $e');
+      throw Exception('Failed to load reviews: $e');
     }
   }
 
-  // Submit a new review
-  Future<bool> submitReview({
-    required int bookingId,
-    required int userId,
-    required int vehicleId,
-    required int rating,
-    required String comment,
-  }) async {
+  // Fetch user's own reviews
+  Future<List<Review>> fetchUserReviews(String userId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/reviews'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'booking_id': bookingId,
-          'user_id': userId,
-          'vehicle_id': vehicleId,
-          'rating': rating,
-          'comment': comment,
-        }),
-      );
+      final querySnapshot = await _firestore
+          .collection(_reviewsCollection)
+          .where('user_id', isEqualTo: userId)
+          .orderBy('created_at', descending: true)
+          .get();
 
-      return response.statusCode == 200 || response.statusCode == 201;
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['review_id'] = doc.id;
+        
+        // Handle Timestamp conversion
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp).toDate().toIso8601String();
+        }
+        
+        return Review.fromJson(data);
+      }).toList();
     } catch (e) {
-      throw Exception('Error submitting review: $e');
+      print('Error fetching user reviews: $e');
+      throw Exception('Failed to load reviews: $e');
+    }
+  }
+
+  // Check if user has reviewed a specific booking
+  Future<bool> hasReviewedBooking(String userId, int bookingId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_reviewsCollection)
+          .where('user_id', isEqualTo: userId)
+          .where('booking_id', isEqualTo: bookingId)
+          .limit(1)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking review status: $e');
+      return false;
+    }
+  }
+
+  // Get review by booking ID
+  Future<Review?> getReviewByBooking(String userId, int bookingId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_reviewsCollection)
+          .where('user_id', isEqualTo: userId)
+          .where('booking_id', isEqualTo: bookingId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) return null;
+
+      final doc = querySnapshot.docs.first;
+      final data = doc.data();
+      data['review_id'] = doc.id;
+      
+      if (data['created_at'] is Timestamp) {
+        data['created_at'] = (data['created_at'] as Timestamp).toDate().toIso8601String();
+      }
+      
+      return Review.fromJson(data);
+    } catch (e) {
+      print('Error getting review: $e');
+      return null;
     }
   }
 
   // Update an existing review
   Future<bool> updateReview({
-    required int reviewId,
+    required String reviewId,
     required int rating,
     required String comment,
+    required int vehicleId,
   }) async {
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/reviews/$reviewId'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'rating': rating,
-          'comment': comment,
-        }),
-      );
+      await _firestore.collection(_reviewsCollection).doc(reviewId).update({
+        'rating': rating,
+        'comment': comment,
+      });
 
-      return response.statusCode == 200;
+      // Update vehicle rating statistics
+      await _updateVehicleRatingStats(vehicleId);
+
+      return true;
     } catch (e) {
-      throw Exception('Error updating review: $e');
+      print('Error updating review: $e');
+      return false;
     }
   }
 
   // Delete a review
-  Future<bool> deleteReview(int reviewId) async {
+  Future<bool> deleteReview(String reviewId, int vehicleId) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/reviews/$reviewId'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      await _firestore.collection(_reviewsCollection).doc(reviewId).delete();
 
-      return response.statusCode == 200;
+      // Update vehicle rating statistics
+      await _updateVehicleRatingStats(vehicleId);
+
+      return true;
     } catch (e) {
-      throw Exception('Error deleting review: $e');
+      print('Error deleting review: $e');
+      return false;
     }
   }
 
-  // Fetch user's own reviews
-  Future<List<Review>> fetchUserReviews(int userId) async {
+  // Update vehicle rating statistics
+  Future<void> _updateVehicleRatingStats(int vehicleId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/$userId/reviews'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Review.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load user reviews');
+      final reviews = await fetchVehicleReviews(vehicleId);
+      
+      if (reviews.isEmpty) {
+        // No reviews, set rating to null
+        await _firestore.collection('vehicles').doc(vehicleId.toString()).update({
+          'rating': null,
+          'review_count': 0,
+        });
+        return;
       }
+
+      // Calculate average rating
+      final totalRating = reviews.fold<int>(0, (sum, review) => sum + review.rating);
+      final averageRating = totalRating / reviews.length;
+
+      // Update vehicle document
+      await _firestore.collection('vehicles').doc(vehicleId.toString()).update({
+        'rating': averageRating,
+        'review_count': reviews.length,
+      });
     } catch (e) {
-      throw Exception('Error fetching user reviews: $e');
+      print('Error updating vehicle stats: $e');
     }
   }
 
-  // Mock data for testing
-  Future<List<Review>> fetchMockVehicleReviews(int vehicleId) async {
-    await Future.delayed(const Duration(seconds: 1));
+  // Get vehicle rating summary
+  Future<Map<String, dynamic>> getVehicleRatingSummary(int vehicleId) async {
+    try {
+      final reviews = await fetchVehicleReviews(vehicleId);
+      
+      if (reviews.isEmpty) {
+        return {
+          'average_rating': 0.0,
+          'total_reviews': 0,
+          'rating_distribution': {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+        };
+      }
 
-    return [
-      Review(
-        reviewId: 1,
-        bookingId: 101,
-        userId: 1,
-        vehicleId: vehicleId,
-        userName: 'Ahmad bin Abdullah',
-        rating: 5,
-        comment: 'Excellent car! Very clean and comfortable. The owner was very professional and helpful. Highly recommend!',
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        vehicleName: 'Toyota Vios',
-      ),
-      Review(
-        reviewId: 2,
-        bookingId: 102,
-        userId: 2,
-        vehicleId: vehicleId,
-        userName: 'Sarah Lim',
-        rating: 4,
-        comment: 'Good experience overall. Car was in great condition. Only minor issue was the pickup time was slightly delayed.',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        vehicleName: 'Toyota Vios',
-      ),
-      Review(
-        reviewId: 3,
-        bookingId: 103,
-        userId: 3,
-        vehicleId: vehicleId,
-        userName: 'Kumar Raj',
-        rating: 5,
-        comment: 'Perfect for my family trip! Spacious and fuel efficient. Will definitely rent again.',
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        vehicleName: 'Toyota Vios',
-      ),
-      Review(
-        reviewId: 4,
-        bookingId: 104,
-        userId: 4,
-        vehicleId: vehicleId,
-        userName: 'Fatimah Hassan',
-        rating: 3,
-        comment: 'Car was okay but had some minor scratches that weren\'t mentioned. Otherwise it ran fine.',
-        createdAt: DateTime.now().subtract(const Duration(days: 20)),
-        vehicleName: 'Toyota Vios',
-      ),
-      Review(
-        reviewId: 5,
-        bookingId: 105,
-        userId: 5,
-        vehicleId: vehicleId,
-        userName: 'David Tan',
-        rating: 5,
-        comment: 'Amazing service! The car was exactly as described. Very smooth rental process.',
-        createdAt: DateTime.now().subtract(const Duration(days: 25)),
-        vehicleName: 'Toyota Vios',
-      ),
-    ];
+      // Calculate average
+      final totalRating = reviews.fold<int>(0, (sum, review) => sum + review.rating);
+      final averageRating = totalRating / reviews.length;
+
+      // Calculate distribution
+      Map<int, int> distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+      for (var review in reviews) {
+        distribution[review.rating] = (distribution[review.rating] ?? 0) + 1;
+      }
+
+      return {
+        'average_rating': averageRating,
+        'total_reviews': reviews.length,
+        'rating_distribution': distribution,
+      };
+    } catch (e) {
+      print('Error getting rating summary: $e');
+      return {
+        'average_rating': 0.0,
+        'total_reviews': 0,
+        'rating_distribution': {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+      };
+    }
   }
 
-  Future<List<Review>> fetchMockUserReviews(int userId) async {
-    await Future.delayed(const Duration(seconds: 1));
-
-    return [
-      Review(
-        reviewId: 1,
-        bookingId: 101,
-        userId: userId,
-        vehicleId: 1,
-        userName: 'Current User',
-        rating: 5,
-        comment: 'Excellent car! Very clean and comfortable.',
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        vehicleName: 'Toyota Vios',
-      ),
-      Review(
-        reviewId: 2,
-        bookingId: 102,
-        userId: userId,
-        vehicleId: 3,
-        userName: 'Current User',
-        rating: 4,
-        comment: 'Good experience overall. Car was in great condition.',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        vehicleName: 'Perodua Myvi',
-      ),
-    ];
+  // Stream reviews for real-time updates
+  Stream<List<Review>> streamVehicleReviews(int vehicleId) {
+    return _firestore
+        .collection(_reviewsCollection)
+        .where('vehicle_id', isEqualTo: vehicleId)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['review_id'] = doc.id;
+        
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp).toDate().toIso8601String();
+        }
+        
+        return Review.fromJson(data);
+      }).toList();
+    });
   }
-
-  Future<Map<String, dynamic>> mockSubmitReview({
-  required int bookingId,
-  required int userId,
-  required int vehicleId,
-  required double rating,
-  required String comment,
-  required String userName,
-}) async {
-  await Future.delayed(const Duration(seconds: 2)); // simulate network delay
-  return {
-    'success': true,
-    'message': 'Mock review submitted successfully!',
-  };
-}
-
 }

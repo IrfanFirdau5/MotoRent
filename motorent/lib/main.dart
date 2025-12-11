@@ -8,11 +8,25 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 void main() async {
+  print('🔵 APP: Starting main()');
+  
   WidgetsFlutterBinding.ensureInitialized();
+  print('🔵 APP: WidgetsFlutterBinding initialized');
+  
   await initializeDateFormatting();
-  await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform,
-);
+  print('🔵 APP: Date formatting initialized');
+  
+  try {
+    print('🔵 APP: About to initialize Firebase');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ APP: Firebase initialized successfully!');
+  } catch (e) {
+    print('🔴 APP: Firebase initialization FAILED: $e');
+  }
+  
+  print('🔵 APP: Starting app');
   runApp(const MotoRentApp());
 }
 

@@ -159,158 +159,176 @@ class _RegisterPageState extends State<RegisterPage> {
     return null;
   }
 
-  Future<void> _handleRegister() async {
-    if (_formKey.currentState!.validate()) {
-      // Additional validation for driver registration
+Future<void> _handleRegister() async {
+  print('🔵 DEBUG: _handleRegister called');
+  
+  if (_formKey.currentState!.validate()) {
+    print('🔵 DEBUG: Form validation passed');
+    
+    // Additional validation for driver registration
+    if (_selectedUserType == 'driver') {
+      print('🔵 DEBUG: Checking driver license image');
+      if (_licenseImage == null) {
+        print('🔴 DEBUG: License image is null');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please upload your driving license photo'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+      print('🔵 DEBUG: License image OK');
+    }
+
+    // Additional validation for owner registration
+    if (_selectedUserType == 'owner') {
+      print('🔵 DEBUG: Checking owner business document');
+      if (_hasBusinessRegistration && _businessDocumentImage == null) {
+        print('🔴 DEBUG: Business document is null');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please upload your business registration document'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+      print('🔵 DEBUG: Business document OK');
+    }
+
+    print('🔵 DEBUG: Setting loading to true');
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      print('🔵 DEBUG: Preparing additional data');
+      Map<String, dynamic>? additionalData;
+      
       if (_selectedUserType == 'driver') {
-        if (_licenseImage == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please upload your driving license photo'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-          return;
+        print('🔵 DEBUG: Creating driver additional data');
+        additionalData = {
+          'ic_number': _icNumberController.text.trim(),
+          'license_number': _licenseNumberController.text.trim(),
+          'license_image_selected': _licenseImage != null,
+          'profile_image_selected': _profileImage != null,
+          'approval_status': 'pending',
+        };
+        print('🔵 DEBUG: Driver data: $additionalData');
+      } else if (_selectedUserType == 'owner') {
+        print('🔵 DEBUG: Creating owner additional data');
+        additionalData = {
+          'business_name': _businessNameController.text.trim(),
+          'owner_ic_number': _ownerIcNumberController.text.trim(),
+          'has_business_registration': _hasBusinessRegistration,
+          'approval_status': 'pending',
+        };
+        
+        if (_hasBusinessRegistration) {
+          additionalData['business_registration_number'] = _businessRegistrationController.text.trim();
+          additionalData['business_document_selected'] = _businessDocumentImage != null;
         }
+        print('🔵 DEBUG: Owner data: $additionalData');
       }
 
-      // Additional validation for owner registration
-      if (_selectedUserType == 'owner') {
-        if (_hasBusinessRegistration && _businessDocumentImage == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please upload your business registration document'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-          return;
-        }
-      }
+      print('🔵 DEBUG: About to call AuthService.register()');
+      print('🔵 DEBUG: Email: ${_emailController.text.trim()}');
+      print('🔵 DEBUG: User Type: $_selectedUserType');
+      
+      // Register user with Firebase
+      final result = await _authService.register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        userType: _selectedUserType,
+        additionalData: additionalData,
+      );
+
+      print('🔵 DEBUG: AuthService.register() returned');
+      print('🔵 DEBUG: Result: $result');
 
       setState(() {
-        _isLoading = true;
+        _isLoading = false;
       });
 
-      try {
-        // Prepare additional data for driver/owner
-        Map<String, dynamic>? additionalData;
-        
-        if (_selectedUserType == 'driver') {
-          // Note: Image upload to Storage is disabled
-          // Images are selected and validated, but not uploaded
-          // When Storage is available, images will be uploaded automatically
-          
-          additionalData = {
-            'ic_number': _icNumberController.text.trim(),
-            'license_number': _licenseNumberController.text.trim(),
-            'license_image_selected': _licenseImage != null,
-            'profile_image_selected': _profileImage != null,
-            'approval_status': 'pending',
-            // Note: These fields will be populated when Storage is enabled
-            // 'license_image_url': null,
-            // 'profile_image_url': null,
-          };
+      if (!mounted) return;
 
-        } else if (_selectedUserType == 'owner') {
-          // Note: Image upload to Storage is disabled
-          // Documents are selected and validated, but not uploaded
-          
-          additionalData = {
-            'business_name': _businessNameController.text.trim(),
-            'owner_ic_number': _ownerIcNumberController.text.trim(),
-            'has_business_registration': _hasBusinessRegistration,
-            'approval_status': 'pending',
-          };
-          
-          if (_hasBusinessRegistration) {
-            additionalData['business_registration_number'] = _businessRegistrationController.text.trim();
-            additionalData['business_document_selected'] = _businessDocumentImage != null;
-            // Note: This field will be populated when Storage is enabled
-            // 'business_document_url': null,
-          }
-        }
-
-        // Register user with Firebase
-        final result = await _authService.register(
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          phone: _phoneController.text.trim(),
-          address: _addressController.text.trim(),
-          userType: _selectedUserType,
-          additionalData: additionalData,
-        );
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        if (!mounted) return;
-
-        if (result['success']) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message']),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-
-          // Show additional info for drivers and owners
-          if (_selectedUserType == 'driver' || _selectedUserType == 'owner') {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Application Submitted'),
-                content: Text(
-                  'Your ${_selectedUserType} application has been submitted successfully. '
-                  'An administrator will review your application within 24-48 hours. '
-                  'You will receive an email notification once your account is approved.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pop(context); // Go back to login
-                    },
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            // For customers, go back to login immediately
-            Navigator.pop(context);
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message']),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        if (!mounted) return;
-
+      if (result['success']) {
+        print('✅ DEBUG: Registration successful!');
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Registration failed: $e'),
+            content: Text(result['message']),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Show additional info for drivers and owners
+        if (_selectedUserType == 'driver' || _selectedUserType == 'owner') {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Application Submitted'),
+              content: Text(
+                'Your $_selectedUserType application has been submitted successfully. '
+                'An administrator will review your application within 24-48 hours. '
+                'You will receive an email notification once your account is approved.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context); // Go back to login
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          // For customers, go back to login immediately
+          Navigator.pop(context);
+        }
+      } else {
+        print('🔴 DEBUG: Registration failed!');
+        print('🔴 DEBUG: Error message: ${result['message']}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
         );
       }
+    } catch (e) {
+      print('🔴 DEBUG: Exception caught: $e');
+      print('🔴 DEBUG: Stack trace:');
+      print(StackTrace.current);
+      
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
+  } else {
+    print('🔴 DEBUG: Form validation FAILED');
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -971,7 +989,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(
                   height: 55,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
+                    onPressed: _isLoading ? null : () {
+                  print('🔵 BUTTON: Register button pressed!');
+                  _handleRegister(); },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E88E5),
                       shape: RoundedRectangleBorder(

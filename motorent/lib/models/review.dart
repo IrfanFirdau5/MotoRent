@@ -1,7 +1,7 @@
 class Review {
-  final int reviewId;
+  final dynamic reviewId; // Can be int or String (Firestore document ID)
   final int bookingId;
-  final int userId;
+  final String userId; // Changed to String for Firebase UID
   final int vehicleId;
   final String userName;
   final String? userProfileImage;
@@ -25,9 +25,9 @@ class Review {
 
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
-      reviewId: json['review_id'] ?? 0,
+      reviewId: json['review_id'] ?? '',
       bookingId: json['booking_id'] ?? 0,
-      userId: json['user_id'] ?? 0,
+      userId: json['user_id']?.toString() ?? '',
       vehicleId: json['vehicle_id'] ?? 0,
       userName: json['user_name'] ?? '',
       userProfileImage: json['user_profile_image'],
@@ -55,7 +55,10 @@ class Review {
     };
   }
 
-  // Helper method to get star icons
+  // Helper method to get review ID as String
+  String get reviewIdString => reviewId.toString();
+
+  // Helper method to get star ratings
   List<bool> get starRatings {
     return List.generate(5, (index) => index < rating);
   }

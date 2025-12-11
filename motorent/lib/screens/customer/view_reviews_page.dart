@@ -7,8 +7,13 @@ import '../../services/review_service.dart';
 
 class ViewReviewsPage extends StatefulWidget {
   final Vehicle vehicle;
+  final String? currentUserId; // Optional: to show delete option for own reviews
 
-  const ViewReviewsPage({Key? key, required this.vehicle}) : super(key: key);
+  const ViewReviewsPage({
+    Key? key,
+    required this.vehicle,
+    this.currentUserId,
+  }) : super(key: key);
 
   @override
   State<ViewReviewsPage> createState() => _ViewReviewsPageState();
@@ -33,7 +38,8 @@ class _ViewReviewsPageState extends State<ViewReviewsPage> {
     });
 
     try {
-      final reviews = await _reviewService.fetchMockVehicleReviews(widget.vehicle.vehicleId);
+      // Fetch reviews from Firebase
+      final reviews = await _reviewService.fetchVehicleReviews(widget.vehicle.vehicleId);
       setState(() {
         _reviews = reviews;
         _isLoading = false;
@@ -58,6 +64,75 @@ class _ViewReviewsPageState extends State<ViewReviewsPage> {
       distribution[review.rating] = (distribution[review.rating] ?? 0) + 1;
     }
     return distribution;
+  }
+
+  Future<void> _deleteReview(Review review) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this review?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      try {
+        final success = await _reviewService.deleteReview(
+          review.reviewIdString,
+          review.vehicleId,
+        );
+
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Review deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReviews(); // Reload reviews
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete review'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -286,6 +361,9 @@ class _ViewReviewsPageState extends State<ViewReviewsPage> {
   }
 
   Widget _buildReviewCard(Review review) {
+    final isOwnReview = widget.currentUserId != null && 
+                         review.userId == widget.currentUserId;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 1,
@@ -316,12 +394,25 @@ class _ViewReviewsPageState extends State<ViewReviewsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        review.userName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              review.userName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (isOwnReview)
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                              onPressed: () => _deleteReview(review),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(

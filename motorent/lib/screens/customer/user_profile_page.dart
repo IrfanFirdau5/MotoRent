@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../login_page.dart';
+import '../customer/my_reviews_page.dart';
+import '../my_bookings_page.dart';
 
 class UserProfilePage extends StatefulWidget {
   final User user;
@@ -34,6 +36,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _emailController = TextEditingController(text: widget.user.email);
     _phoneController = TextEditingController(text: widget.user.phone);
     _addressController = TextEditingController(text: widget.user.address);
+  }
+  void _navigateToMyReviews() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => MyReviewsPage(
+        userId: widget.user.userIdString, // or widget.user.userId.toString()
+      ),
+    ),
+  );
   }
 
   @override
@@ -206,7 +218,44 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ],
               ),
             ),
-
+            
+            //Navigate to my reviews
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.rate_review,
+                    color: Colors.amber,
+                  ),
+                ),
+                title: const Text(
+                  'My Reviews',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Manage your vehicle reviews',
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                ),
+                onTap: _navigateToMyReviews,
+              ),
+            ),
             // Profile Form
             Padding(
               padding: const EdgeInsets.all(20),
@@ -430,6 +479,110 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               ),
                             ],
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      const Text(
+                        'Activity',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // My Bookings Card
+                      Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E88E5).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.calendar_today,
+                              color: Color(0xFF1E88E5),
+                            ),
+                          ),
+                          title: const Text(
+                            'My Bookings',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'View and manage your bookings',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyBookingsPage(
+                                  userId: widget.user.userIdString,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // My Reviews Card
+                      Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.rate_review,
+                              color: Colors.amber,
+                            ),
+                          ),
+                          title: const Text(
+                            'My Reviews',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Manage your vehicle reviews',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyReviewsPage(
+                                  userId: widget.user.userIdString,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                   ],

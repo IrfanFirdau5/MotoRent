@@ -5,7 +5,7 @@ import '../../models/review.dart';
 import '../../services/review_service.dart';
 
 class MyReviewsPage extends StatefulWidget {
-  final int userId;
+  final String userId; // Changed to String for Firebase UID
 
   const MyReviewsPage({Key? key, required this.userId}) : super(key: key);
 
@@ -32,7 +32,8 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
     });
 
     try {
-      final reviews = await _reviewService.fetchMockUserReviews(widget.userId);
+      // Fetch user's reviews from Firebase
+      final reviews = await _reviewService.fetchUserReviews(widget.userId);
       setState(() {
         _reviews = reviews;
         _isLoading = false;
@@ -52,25 +53,46 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
     );
 
     if (result != null) {
-      try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 1));
-        
-        // When backend is ready, use this:
-        // await _reviewService.updateReview(
-        //   reviewId: review.reviewId,
-        //   rating: result['rating'],
-        //   comment: result['comment'],
-        // );
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
+      try {
+        final success = await _reviewService.updateReview(
+          reviewId: review.reviewIdString,
+          rating: result['rating'],
+          comment: result['comment'],
+          vehicleId: review.vehicleId,
         );
-        _loadMyReviews();
+
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Review updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadMyReviews(); // Reload reviews
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update review'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update review: $e'),
@@ -86,7 +108,9 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Review'),
-        content: const Text('Are you sure you want to delete this review?'),
+        content: Text(
+          'Are you sure you want to delete your review for ${review.vehicleName ?? "this vehicle"}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -95,28 +119,54 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 1));
-        
-        // When backend is ready, use this:
-        // await _reviewService.deleteReview(review.reviewId);
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review deleted successfully!'),
-            backgroundColor: Colors.green,
-          ),
+      try {
+        final success = await _reviewService.deleteReview(
+          review.reviewIdString,
+          review.vehicleId,
         );
-        _loadMyReviews();
+
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Review deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadMyReviews(); // Reload reviews
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete review'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to delete review: $e'),
@@ -202,16 +252,98 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadMyReviews,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _reviews.length,
-                        itemBuilder: (context, index) {
-                          final review = _reviews[index];
-                          return _buildReviewCard(review);
-                        },
+                      child: Column(
+                        children: [
+                          // Summary Card
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  spreadRadius: 1,
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Total Reviews',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${_reviews.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.star,
+                                      color: Colors.amber,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _calculateAverageRating().toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const Text(
+                                      ' average',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Reviews List
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _reviews.length,
+                              itemBuilder: (context, index) {
+                                final review = _reviews[index];
+                                return _buildReviewCard(review);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
     );
+  }
+
+  double _calculateAverageRating() {
+    if (_reviews.isEmpty) return 0.0;
+    final total = _reviews.fold<int>(0, (sum, review) => sum + review.rating);
+    return total / _reviews.length;
   }
 
   Widget _buildReviewCard(Review review) {
@@ -233,20 +365,42 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        review.vehicleName ?? 'Unknown Vehicle',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.directions_car,
+                            size: 20,
+                            color: Color(0xFF1E88E5),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              review.vehicleName ?? 'Unknown Vehicle',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        DateFormat('dd MMM yyyy').format(review.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('dd MMM yyyy').format(review.createdAt),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -289,19 +443,50 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
               children: List.generate(5, (index) {
                 return Icon(
                   index < review.rating ? Icons.star : Icons.star_border,
-                  size: 20,
+                  size: 22,
                   color: index < review.rating ? Colors.amber : Colors.grey,
                 );
               }),
             ),
             const SizedBox(height: 12),
-            Text(
-              review.comment,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[800],
-                height: 1.5,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[200]!),
               ),
+              child: Text(
+                review.comment,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[800],
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _editReview(review),
+                  icon: const Icon(Icons.edit, size: 18),
+                  label: const Text('Edit'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF1E88E5),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => _deleteReview(review),
+                  icon: const Icon(Icons.delete, size: 18),
+                  label: const Text('Delete'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -412,12 +597,27 @@ class _EditReviewDialogState extends State<_EditReviewDialog> {
               );
               return;
             }
+            if (_commentController.text.trim().length < 10) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Comment must be at least 10 characters'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
             Navigator.pop(context, {
               'rating': _rating,
               'comment': _commentController.text.trim(),
             });
           },
-          child: const Text('Save'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E88E5),
+          ),
+          child: const Text(
+            'Save',
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       ],
     );
