@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../../models/booking.dart';
-import '../../models/vehicle.dart';
-import '../../services/booking_service.dart';
-import '../../services/vehicle_service.dart';
-import '../../services/review_service.dart';
-import 'customer/submit_review_page.dart';
+import '../../../models/booking.dart';
+import '../../../models/vehicle.dart';
+import '../../../services/booking_service.dart';
+import '../../../services/vehicle_service.dart';
+import '../../../services/review_service.dart';
+import 'submit_review_page.dart';
 import 'vehicle_listing_page.dart';
 import 'add_review_page.dart';
 

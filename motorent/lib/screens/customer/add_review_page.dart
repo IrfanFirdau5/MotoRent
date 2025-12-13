@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/booking.dart';
-import '../services/review_service.dart';
+import '../../models/booking.dart';
+import '../../services/review_service.dart';
 
 class AddReviewPage extends StatefulWidget {
   final Booking booking;
