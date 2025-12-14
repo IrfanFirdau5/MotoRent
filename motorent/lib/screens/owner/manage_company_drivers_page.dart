@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'add_company_driver_page.dart';
+import '/services/firebase_company_driver_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ManageCompanyDriversPage extends StatefulWidget {
   final int ownerId;
-
-  const ManageCompanyDriversPage({
+  
+  ManageCompanyDriversPage({
     Key? key,
     required this.ownerId,
   }) : super(key: key);
@@ -15,10 +18,11 @@ class ManageCompanyDriversPage extends StatefulWidget {
 }
 
 class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
+  final _driverService = FirebaseCompanyDriverService();
   bool _isLoading = true;
   List<CompanyDriver> _drivers = [];
   String _errorMessage = '';
-
+  
   @override
   void initState() {
     super.initState();
@@ -32,86 +36,130 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
     });
 
     try {
-      // Simulate API call - Replace with actual API
-      await Future.delayed(const Duration(seconds: 1));
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
 
-      // Mock data
-      final mockDrivers = [
-        CompanyDriver(
-          driverId: 1,
-          name: 'Ahmad bin Hassan',
-          email: 'ahmad.driver@example.com',
-          phone: '+60123456789',
-          licenseNumber: 'D1234567',
-          status: 'available',
-          totalJobs: 45,
-          rating: 4.8,
-          isActive: true,
-        ),
-        CompanyDriver(
-          driverId: 2,
-          name: 'Kumar Raj',
-          email: 'kumar.driver@example.com',
-          phone: '+60198765432',
-          licenseNumber: 'D7654321',
-          status: 'on_job',
-          totalJobs: 32,
-          rating: 4.6,
-          isActive: true,
-        ),
-        CompanyDriver(
-          driverId: 3,
-          name: 'Lee Wei Ming',
-          email: 'lee.driver@example.com',
-          phone: '+60187654321',
-          licenseNumber: 'D9876543',
-          status: 'available',
-          totalJobs: 28,
-          rating: 4.9,
-          isActive: true,
-        ),
-      ];
+      print('🔍 Loading company drivers for owner: ${currentUser.uid}');
 
+      // SIMPLIFIED QUERY - Just owner_id, no ordering
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('company_drivers')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      print('📦 Query returned: ${querySnapshot.docs.length} documents');
+
+      if (querySnapshot.docs.isEmpty) {
+        print('ℹ️  No company drivers found');
+        setState(() {
+          _drivers = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Convert to driver objects
+      final drivers = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return CompanyDriver(
+          driverId: doc.id,
+          ownerId: data['owner_id'] ?? '',
+          userId: data['user_id'],
+          name: data['name'] ?? '',
+          email: data['email'] ?? '',
+          phone: data['phone'] ?? '',
+          licenseNumber: data['license_number'] ?? '',
+          address: data['address'] ?? '',
+          status: data['status'] ?? 'available',
+          isActive: data['is_active'] ?? true,
+          totalJobs: data['total_jobs'] ?? 0,
+          rating: data['rating']?.toDouble(),
+          createdAt: data['created_at'] is Timestamp
+              ? (data['created_at'] as Timestamp).toDate()
+              : DateTime.now(),
+          updatedAt: data['updated_at'] is Timestamp
+              ? (data['updated_at'] as Timestamp).toDate()
+              : DateTime.now(),
+        );
+      }).toList();
+
+      // Sort in code instead of query
+      drivers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      print('✅ Loaded ${drivers.length} company drivers');
+      
       setState(() {
-        _drivers = mockDrivers;
+        _drivers = drivers;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error loading company drivers: $e');
+      print('Stack trace: $stackTrace');
+      
       setState(() {
         _errorMessage = 'Failed to load drivers: $e';
         _isLoading = false;
+        _drivers = []; // Show empty instead of error
       });
     }
   }
 
-  Future<void> _toggleDriverStatus(CompanyDriver driver) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+ Future<void> _toggleDriverStatus(CompanyDriver driver) async {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+  try {
+    final newStatus = !driver.isActive;
+    
+    print('🔄 Toggling driver active status to: $newStatus');
+
+    await FirebaseFirestore.instance
+        .collection('company_drivers')
+        .doc(driver.driverId)
+        .update({
+      'is_active': newStatus,
+      'status': newStatus ? 'available' : 'offline',
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+
+    print('✅ Driver status updated successfully');
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context); // Close loading dialog
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          driver.isActive
-              ? 'Driver deactivated'
-              : 'Driver activated',
+          driver.isActive ? 'Driver deactivated' : 'Driver activated',
         ),
         backgroundColor: Colors.green,
       ),
     );
 
-    _loadDrivers();
+    _loadDrivers(); // Reload the list
+
+  } catch (e) {
+    print('❌ Error updating driver status: $e');
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to update driver status: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   Future<void> _showDeleteDialog(CompanyDriver driver) async {
     final confirmed = await showDialog<bool>(
@@ -144,29 +192,51 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
   }
 
   Future<void> _deleteDriver(CompanyDriver driver) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+  try {
+    print('🗑️ Deleting driver: ${driver.driverId}');
+
+    // Hard delete for drivers
+    await FirebaseFirestore.instance
+        .collection('company_drivers')
+        .doc(driver.driverId)
+        .delete();
+
+    print('✅ Driver deleted successfully');
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context); // Close loading dialog
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Driver removed successfully'),
+        content: Text('Driver deleted successfully'),
         backgroundColor: Colors.green,
       ),
     );
 
-    _loadDrivers();
+    _loadDrivers(); // Reload the list
+
+  } catch (e) {
+    print('❌ Error deleting driver: $e');
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to delete driver: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   void _showDriverOptions(CompanyDriver driver) {
     showModalBottomSheet(
@@ -591,7 +661,7 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
                   ),
                   _buildMetric(
                     'Rating',
-                    driver.rating.toStringAsFixed(1),
+                    (driver.rating ?? 0.0).toStringAsFixed(1),
                     Icons.star,
                     valueColor: Colors.amber,
                   ),
@@ -653,29 +723,4 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
         return status.toUpperCase();
     }
   }
-}
-
-// Model class for company driver
-class CompanyDriver {
-  final int driverId;
-  final String name;
-  final String email;
-  final String phone;
-  final String licenseNumber;
-  final String status; // available, on_job, offline
-  final int totalJobs;
-  final double rating;
-  final bool isActive;
-
-  CompanyDriver({
-    required this.driverId,
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.licenseNumber,
-    required this.status,
-    required this.totalJobs,
-    required this.rating,
-    required this.isActive,
-  });
 }

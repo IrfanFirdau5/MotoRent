@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '/services/firebase_vehicle_service.dart';
+import '/services/debug_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddVehiclePage extends StatefulWidget {
   final int ownerId;
@@ -20,7 +24,8 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   final _licensePlateController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
-
+  final _vehicleService = FirebaseVehicleService();
+  
   String _selectedBrand = 'Toyota';
   bool _isLoading = false;
 
@@ -47,13 +52,58 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   }
 
   Future<void> _submitVehicle() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
 
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('No user logged in');
+      }
+
+      print('📝 Creating vehicle...');
+      print('   Owner UID: ${currentUser.uid}');
+
+      // Get user data for owner name
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      
+      final ownerName = userDoc.data()?['name'] ?? 'Unknown Owner';
+
+      // Create vehicle data
+      final vehicleData = {
+        'owner_id': currentUser.uid,
+        'owner_name': ownerName,
+        'brand': _selectedBrand,
+        'model': _modelController.text.trim(),
+        'license_plate': _licensePlateController.text.trim().toUpperCase(),
+        'price_per_day': double.parse(_priceController.text),
+        'description': _descriptionController.text.trim(),
+        'availability_status': 'available',
+        'image_url': 'https://via.placeholder.com/300x200?text=$_selectedBrand+${_modelController.text.trim()}',
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+        'rating': null,
+        'review_count': 0,
+        'total_bookings': 0,
+        'total_revenue': 0.0,
+        'is_deleted': false,
+      };
+
+      print('   Creating document in Firestore...');
+
+      // Add to Firestore directly
+      final docRef = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .add(vehicleData);
+
+      print('✅ Vehicle created successfully!');
+      print('   Vehicle ID: ${docRef.id}');
 
       setState(() {
         _isLoading = false;
@@ -65,12 +115,43 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         const SnackBar(
           content: Text('Vehicle added successfully!'),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
         ),
       );
 
-      Navigator.pop(context, true); // Return true to indicate success
+      Navigator.pop(context, true);
+
+    } catch (e, stackTrace) {
+      print('❌ Error creating vehicle: $e');
+      print('   Stack trace: $stackTrace');
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      String errorMessage = 'Failed to add vehicle';
+      
+      if (e.toString().contains('permission-denied')) {
+        errorMessage = 'Permission denied. Check your account status.';
+      } else if (e.toString().contains('not found')) {
+        errorMessage = 'User account not found. Please log in again.';
+      } else {
+        errorMessage = 'Error: ${e.toString()}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

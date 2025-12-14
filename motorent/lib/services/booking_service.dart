@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/booking.dart';
 
@@ -8,8 +9,8 @@ class BookingService {
 
   // Create a new booking
   Future<Map<String, dynamic>> createBooking({
-    required int userId,
-    required int vehicleId,
+    required dynamic userId,
+    required dynamic vehicleId,
     required DateTime startDate,
     required DateTime endDate,
     required double totalPrice,
@@ -54,7 +55,7 @@ class BookingService {
   }
 
   // Fetch user's bookings
-  Future<List<Booking>> fetchUserBookings(int userId) async {
+  Future<List<Booking>> fetchUserBookings(dynamic userId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/bookings/user/$userId'),
@@ -73,7 +74,7 @@ class BookingService {
   }
 
   // Cancel a booking
-  Future<Map<String, dynamic>> cancelBooking(int bookingId) async {
+  Future<Map<String, dynamic>> cancelBooking(dynamic bookingId) async {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
@@ -101,7 +102,7 @@ class BookingService {
 
   // Check vehicle availability for dates
   Future<bool> checkAvailability({
-    required int vehicleId,
+    required dynamic vehicleId,
     required DateTime startDate,
     required DateTime endDate,
   }) async {
@@ -126,8 +127,9 @@ class BookingService {
 
   // Mock create booking for testing
   Future<Map<String, dynamic>> mockCreateBooking({
-    required int userId,
-    required int vehicleId,
+    required dynamic userId,
+    required dynamic vehicleId,
+    required dynamic ownerId,
     required DateTime startDate,
     required DateTime endDate,
     required double totalPrice,
@@ -144,6 +146,7 @@ class BookingService {
       bookingId: DateTime.now().millisecondsSinceEpoch,
       userId: userId,
       vehicleId: vehicleId,
+      ownerId: ownerId,
       startDate: startDate,
       endDate: endDate,
       totalPrice: totalPrice,
@@ -166,7 +169,7 @@ class BookingService {
   }
 
   // Mock fetch user bookings
-  Future<List<Booking>> mockFetchUserBookings(int userId) async {
+  Future<List<Booking>> mockFetchUserBookings(dynamic userId) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
@@ -174,7 +177,8 @@ class BookingService {
       Booking(
         bookingId: 1001,
         userId: userId,
-        vehicleId: 1,
+        vehicleId: '1',
+        ownerId : '1',
         startDate: DateTime.now().add(const Duration(days: 2)),
         endDate: DateTime.now().add(const Duration(days: 5)),
         totalPrice: 360.00,
@@ -188,7 +192,8 @@ class BookingService {
       Booking(
         bookingId: 1002,
         userId: userId,
-        vehicleId: 3,
+        vehicleId: '3',
+        ownerId : 'Ahmad',
         startDate: DateTime.now().subtract(const Duration(days: 10)),
         endDate: DateTime.now().subtract(const Duration(days: 7)),
         totalPrice: 390.00,
@@ -203,7 +208,8 @@ class BookingService {
       Booking(
         bookingId: 1003,
         userId: userId,
-        vehicleId: 2,
+        vehicleId: '2',
+        ownerId : 'Ahmad',
         startDate: DateTime.now().add(const Duration(days: 10)),
         endDate: DateTime.now().add(const Duration(days: 12)),
         totalPrice: 450.00,
@@ -218,7 +224,7 @@ class BookingService {
   }
 
   // Mock cancel booking
-  Future<Map<String, dynamic>> mockCancelBooking(int bookingId) async {
+  Future<Map<String, dynamic>> mockCancelBooking(dynamic bookingId) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 

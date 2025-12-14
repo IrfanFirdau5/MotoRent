@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '/services/firebase_company_driver_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddCompanyDriverPage extends StatefulWidget {
-  final int ownerId;
+  final dynamic ownerId;
 
-  const AddCompanyDriverPage({
+  AddCompanyDriverPage({
     Key? key,
     required this.ownerId,
   }) : super(key: key);
@@ -14,6 +17,7 @@ class AddCompanyDriverPage extends StatefulWidget {
 }
 
 class _AddCompanyDriverPageState extends State<AddCompanyDriverPage> {
+  final _driverService = FirebaseCompanyDriverService();
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -33,24 +37,124 @@ class _AddCompanyDriverPageState extends State<AddCompanyDriverPage> {
     super.dispose();
   }
 
-  Future<void> _submitDriver() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+//   Future<void> _submitDriver() async {
+//   if (_formKey.currentState!.validate()) {
+//     setState(() => _isLoading = true);
 
-      // Simulate API call to register company driver
-      await Future.delayed(const Duration(seconds: 2));
+//     final result = await _driverService.addCompanyDriver(
+//       ownerId: widget.ownerId.toString(),
+//       name: _nameController.text.trim(),
+//       email: _emailController.text.trim(),
+//       phone: _phoneController.text.trim(),
+//       licenseNumber: _licenseNumberController.text.trim(),
+//       address: _addressController.text.trim(),
+//     );
 
-      // When backend is ready, use this:
-      // final result = await DriverService().registerCompanyDriver(
-      //   ownerId: widget.ownerId,
-      //   name: _nameController.text.trim(),
-      //   email: _emailController.text.trim(),
-      //   phone: _phoneController.text.trim(),
-      //   licenseNumber: _licenseNumberController.text.trim(),
-      //   address: _addressController.text.trim(),
-      // );
+//     setState(() => _isLoading = false);
+
+//     if (!mounted) return;
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(result['message']),
+//         backgroundColor: result['success'] ? Colors.green : Colors.red,
+//       ),
+//     );
+
+//     if (result['success']) {
+//       Navigator.pop(context, true);
+//     }
+//   }
+// }
+
+Future<void> _submitDriverWithDebug() async {
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('No user logged in');
+      }
+
+      print('\n🔍 DEBUGGING DRIVER CREATION');
+      print('═══════════════════════════════════════');
+      
+      // Step 1: Check user authentication
+      print('✅ Current User:');
+      print('   UID: ${currentUser.uid}');
+      print('   Email: ${currentUser.email}');
+      print('');
+
+      // Step 2: Check user document
+      print('📄 Checking user document...');
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception('User document not found');
+      }
+
+      final userData = userDoc.data()!;
+      print('✅ User Data:');
+      print('   user_type: ${userData['user_type']}');
+      print('   approval_status: ${userData['approval_status']}');
+      print('   is_active: ${userData['is_active']}');
+      print('');
+
+      // Step 3: Validate user can create drivers
+      if (userData['user_type'] != 'owner') {
+        throw Exception('User is not an owner: ${userData['user_type']}');
+      }
+
+      if (userData['approval_status'] != 'approved') {
+        throw Exception('Owner not approved: ${userData['approval_status']}');
+      }
+
+      if (userData['is_active'] != true) {
+        throw Exception('Owner account not active');
+      }
+
+      print('✅ All user validations passed');
+      print('');
+
+      // Step 4: Prepare driver data
+      final driverData = {
+        'owner_id': currentUser.uid,
+        'user_id': null, // Optional: if driver has account
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'license_number': _licenseNumberController.text.trim().toUpperCase(),
+        'address': _addressController.text.trim(),
+        'status': 'available',
+        'is_active': true,
+        'total_jobs': 0,
+        'rating': null,
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+
+      print('📝 Driver Data to be created:');
+      print('   owner_id: ${driverData['owner_id']}');
+      print('   name: ${driverData['name']}');
+      print('   email: ${driverData['email']}');
+      print('');
+
+      // Step 5: Attempt to create driver
+      print('🚀 Attempting to create driver in Firestore...');
+      
+      final docRef = await FirebaseFirestore.instance
+          .collection('company_drivers')
+          .add(driverData);
+
+      print('✅ SUCCESS! Driver created with ID: ${docRef.id}');
+      print('═══════════════════════════════════════\n');
 
       setState(() {
         _isLoading = false;
@@ -65,9 +169,47 @@ class _AddCompanyDriverPageState extends State<AddCompanyDriverPage> {
         ),
       );
 
-      Navigator.pop(context, true); // Return true to indicate success
+      Navigator.pop(context, true);
+
+    } catch (e, stackTrace) {
+      print('\n❌ ERROR CREATING DRIVER:');
+      print('═══════════════════════════════════════');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      print('═══════════════════════════════════════\n');
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      // Parse error message
+      String errorMessage = 'Failed to add driver';
+      
+      if (e.toString().contains('permission-denied')) {
+        errorMessage = 'Permission denied. Please check:\n'
+                      '1. You are logged in as an owner\n'
+                      '2. Your owner status is approved\n'
+                      '3. Firestore security rules are correct';
+      } else if (e.toString().contains('User is not an owner')) {
+        errorMessage = 'Only vehicle owners can add company drivers';
+      } else if (e.toString().contains('Owner not approved')) {
+        errorMessage = 'Your owner account is pending approval';
+      } else {
+        errorMessage = e.toString();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +328,6 @@ class _AddCompanyDriverPageState extends State<AddCompanyDriverPage> {
                 decoration: InputDecoration(
                   hintText: '0123456789',
                   prefixIcon: const Icon(Icons.phone_outlined),
-                  prefixText: '+60 ',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -300,7 +441,7 @@ class _AddCompanyDriverPageState extends State<AddCompanyDriverPage> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitDriver,
+                  onPressed: _isLoading ? null : _submitDriverWithDebug,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1E88E5),
                     disabledBackgroundColor: Colors.grey[300],

@@ -256,8 +256,9 @@ class AdminService {
     return [
       Booking(
         bookingId: 1,
-        userId: 1,
-        vehicleId: 1,
+        userId: '1',
+        vehicleId: '1',
+        ownerId: 'Ahmad',
         startDate: DateTime.now().add(const Duration(days: 2)),
         endDate: DateTime.now().add(const Duration(days: 5)),
         totalPrice: 360.00,
@@ -269,8 +270,9 @@ class AdminService {
       ),
       Booking(
         bookingId: 2,
-        userId: 2,
-        vehicleId: 3,
+        userId: '2',
+        vehicleId: '3',
+        ownerId: 'Ahmad',
         startDate: DateTime.now().add(const Duration(days: 1)),
         endDate: DateTime.now().add(const Duration(days: 3)),
         totalPrice: 160.00,
@@ -282,8 +284,9 @@ class AdminService {
       ),
       Booking(
         bookingId: 3,
-        userId: 1,
-        vehicleId: 2,
+        userId: '1',
+        vehicleId: '2',
+        ownerId: 'Ahmad',
         startDate: DateTime.now().subtract(const Duration(days: 5)),
         endDate: DateTime.now().subtract(const Duration(days: 2)),
         totalPrice: 450.00,

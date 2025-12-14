@@ -1,10 +1,15 @@
+// FILE: motorent/lib/screens/owner/my_vehicles_page.dart
+// UPDATED VERSION - Replace your current file
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '/models/vehicle.dart';
-import '/services/vehicle_service.dart';
+import '/services/firebase_vehicle_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MyVehiclesPage extends StatefulWidget {
-  final int ownerId;
+  final dynamic ownerId; // Can accept int or String
 
   const MyVehiclesPage({
     Key? key,
@@ -16,7 +21,7 @@ class MyVehiclesPage extends StatefulWidget {
 }
 
 class _MyVehiclesPageState extends State<MyVehiclesPage> {
-  final VehicleService _vehicleService = VehicleService();
+  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -34,16 +39,54 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
     });
 
     try {
-      // In real app, fetch only owner's vehicles
-      final allVehicles = await _vehicleService.fetchMockVehicles();
-      // Filter by owner ID (mock filter)
-      final ownerVehicles = allVehicles.where((v) => v.ownerId == widget.ownerId).toList();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      print('🔍 Loading vehicles for owner: ${currentUser.uid}');
+
+      // SIMPLIFIED QUERY - No complex filters
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      print('📦 Raw query returned: ${querySnapshot.docs.length} documents');
+
+      // Filter out deleted vehicles in code instead of query
+      final vehicles = querySnapshot.docs
+          .where((doc) {
+            final data = doc.data();
+            final isDeleted = data['is_deleted'] ?? false;
+            return !isDeleted;
+          })
+          .map((doc) {
+            final data = doc.data();
+            data['vehicle_id'] = doc.id;
+            
+            // Handle Timestamp conversion
+            if (data['created_at'] is Timestamp) {
+              data['created_at'] = (data['created_at'] as Timestamp)
+                  .toDate()
+                  .toIso8601String();
+            }
+            
+            return Vehicle.fromJson(data);
+          })
+          .toList();
+
+      print('✅ Filtered to ${vehicles.length} non-deleted vehicles');
       
       setState(() {
-        _vehicles = ownerVehicles;
+        _vehicles = vehicles;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error loading vehicles: $e');
+      print('Stack trace: $stackTrace');
+      
       setState(() {
         _errorMessage = 'Failed to load vehicles: $e';
         _isLoading = false;
@@ -52,19 +95,31 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Future<void> _toggleAvailability(Vehicle vehicle) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+  try {
+    final newStatus = vehicle.isAvailable ? 'unavailable' : 'available';
+    
+    print('🔄 Toggling availability to: $newStatus');
+
+    await FirebaseFirestore.instance
+        .collection('vehicles')
+        .doc(vehicle.vehicleId.toString())
+        .update({
+      'availability_status': newStatus,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+
+    print('✅ Status updated successfully');
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context); // Close loading dialog
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -77,8 +132,22 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       ),
     );
 
-    _loadVehicles();
+    _loadVehicles(); // Reload the list
+
+  } catch (e) {
+    print('❌ Error updating status: $e');
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to update status: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   Future<void> _showDeleteDialog(Vehicle vehicle) async {
     final confirmed = await showDialog<bool>(
@@ -115,19 +184,31 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Future<void> _deleteVehicle(Vehicle vehicle) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+  try {
+    print('🗑️ Deleting vehicle: ${vehicle.vehicleId}');
+
+    // Soft delete - just mark as deleted
+    await FirebaseFirestore.instance
+        .collection('vehicles')
+        .doc(vehicle.vehicleId.toString())
+        .update({
+      'is_deleted': true,
+      'availability_status': 'unavailable',
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+
+    print('✅ Vehicle deleted successfully');
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context); // Close loading dialog
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -136,8 +217,22 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       ),
     );
 
-    _loadVehicles();
+    _loadVehicles(); // Reload the list
+
+  } catch (e) {
+    print('❌ Error deleting vehicle: $e');
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to delete vehicle: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   void _showVehicleOptions(Vehicle vehicle) {
     showModalBottomSheet(
@@ -222,6 +317,13 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
         title: const Text('My Vehicles'),
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadVehicles,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -236,10 +338,13 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(

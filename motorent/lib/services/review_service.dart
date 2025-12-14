@@ -7,9 +7,9 @@ class ReviewService {
 
   // Submit a new review
   Future<Map<String, dynamic>> submitReview({
-    required int bookingId,
+    required String bookingId,
     required String userId,
-    required int vehicleId,
+    required String vehicleId,
     required double rating,
     required String comment,
     required String userName,
@@ -59,7 +59,7 @@ class ReviewService {
   }
 
   // Fetch reviews for a specific vehicle
-  Future<List<Review>> fetchVehicleReviews(int vehicleId) async {
+  Future<List<Review>> fetchVehicleReviews(String vehicleId) async {
     try {
       final querySnapshot = await _firestore
           .collection(_reviewsCollection)
@@ -159,7 +159,7 @@ class ReviewService {
     required String reviewId,
     required int rating,
     required String comment,
-    required int vehicleId,
+    required String vehicleId,
   }) async {
     try {
       await _firestore.collection(_reviewsCollection).doc(reviewId).update({
@@ -178,7 +178,7 @@ class ReviewService {
   }
 
   // Delete a review
-  Future<bool> deleteReview(String reviewId, int vehicleId) async {
+  Future<bool> deleteReview(String reviewId, String vehicleId) async {
     try {
       await _firestore.collection(_reviewsCollection).doc(reviewId).delete();
 
@@ -193,7 +193,7 @@ class ReviewService {
   }
 
   // Update vehicle rating statistics
-  Future<void> _updateVehicleRatingStats(int vehicleId) async {
+  Future<void> _updateVehicleRatingStats(String vehicleId) async {
     try {
       final reviews = await fetchVehicleReviews(vehicleId);
       
@@ -221,7 +221,7 @@ class ReviewService {
   }
 
   // Get vehicle rating summary
-  Future<Map<String, dynamic>> getVehicleRatingSummary(int vehicleId) async {
+  Future<Map<String, dynamic>> getVehicleRatingSummary(String vehicleId) async {
     try {
       final reviews = await fetchVehicleReviews(vehicleId);
       
@@ -259,7 +259,7 @@ class ReviewService {
   }
 
   // Stream reviews for real-time updates
-  Stream<List<Review>> streamVehicleReviews(int vehicleId) {
+  Stream<List<Review>> streamVehicleReviews(String vehicleId) {
     return _firestore
         .collection(_reviewsCollection)
         .where('vehicle_id', isEqualTo: vehicleId)

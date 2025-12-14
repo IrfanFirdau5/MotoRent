@@ -122,6 +122,7 @@ class _BookingPageState extends State<BookingPage> {
       final result = await _bookingService.mockCreateBooking(
         userId: widget.userId,
         vehicleId: widget.vehicle.vehicleId,
+        ownerId: widget.vehicle.ownerId,
         startDate: _startDate!,
         endDate: _endDate!,
         totalPrice: _calculateTotalPrice(),

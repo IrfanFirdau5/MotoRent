@@ -1,6 +1,6 @@
 class Vehicle {
-  final int vehicleId;
-  final int ownerId;
+  final dynamic vehicleId;
+  final String ownerId;
   final String brand;
   final String model;
   final String licensePlate;

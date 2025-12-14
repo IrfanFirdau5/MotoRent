@@ -195,7 +195,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         (v) => v.vehicleId == booking.vehicleId,
         orElse: () => Vehicle(
           vehicleId: booking.vehicleId,
-          ownerId: 0,
+          ownerId: '0',
           brand: 'Unknown',
           model: 'Vehicle',
           licensePlate: '',

@@ -1,7 +1,8 @@
 class Booking {
-  final int bookingId;
-  final int userId;
-  final int vehicleId;
+  final dynamic bookingId;
+  final String userId;
+  final String vehicleId;
+  final String ownerId;
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
@@ -19,6 +20,7 @@ class Booking {
     required this.bookingId,
     required this.userId,
     required this.vehicleId,
+    required this.ownerId,
     required this.startDate,
     required this.endDate,
     required this.totalPrice,
@@ -38,6 +40,7 @@ class Booking {
       bookingId: json['booking_id'] ?? 0,
       userId: json['user_id'] ?? 0,
       vehicleId: json['vehicle_id'] ?? 0,
+      ownerId: json['owner_id'] ?? 0,
       startDate: json['start_date'] != null
           ? DateTime.parse(json['start_date'])
           : DateTime.now(),

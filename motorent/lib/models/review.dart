@@ -1,8 +1,8 @@
 class Review {
   final dynamic reviewId; // Can be int or String (Firestore document ID)
-  final int bookingId;
+  final String bookingId;
   final String userId; // Changed to String for Firebase UID
-  final int vehicleId;
+  final String vehicleId;
   final String userName;
   final String? userProfileImage;
   final int rating; // 1-5 stars

@@ -69,7 +69,7 @@ class VehicleService {
   }
 
   // Fetch single vehicle details
-  Future<Vehicle> fetchVehicleById(int vehicleId) async {
+  Future<Vehicle> fetchVehicleById(dynamic vehicleId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/vehicles/$vehicleId'),
@@ -94,7 +94,7 @@ class VehicleService {
     return [
       Vehicle(
         vehicleId: 1,
-        ownerId: 101,
+        ownerId: 'Ahmad',
         brand: 'Toyota',
         model: 'Vios',
         licensePlate: 'QA1234A',
@@ -109,7 +109,7 @@ class VehicleService {
       ),
       Vehicle(
         vehicleId: 2,
-        ownerId: 102,
+        ownerId: 'Ahmad',
         brand: 'Honda',
         model: 'Civic',
         licensePlate: 'QB5678B',
@@ -124,7 +124,7 @@ class VehicleService {
       ),
       Vehicle(
         vehicleId: 3,
-        ownerId: 103,
+        ownerId: 'Ahmad',
         brand: 'Perodua',
         model: 'Myvi',
         licensePlate: 'QC9012C',
@@ -139,7 +139,7 @@ class VehicleService {
       ),
       Vehicle(
         vehicleId: 4,
-        ownerId: 104,
+        ownerId: 'Ahmad',
         brand: 'Proton',
         model: 'X70',
         licensePlate: 'QD3456D',
@@ -154,7 +154,7 @@ class VehicleService {
       ),
       Vehicle(
         vehicleId: 5,
-        ownerId: 105,
+        ownerId: 'Ahmad',
         brand: 'Toyota',
         model: 'Hilux',
         licensePlate: 'QE7890E',
@@ -169,7 +169,7 @@ class VehicleService {
       ),
       Vehicle(
         vehicleId: 6,
-        ownerId: 106,
+        ownerId: 'Ahmad',
         brand: 'Nissan',
         model: 'Almera',
         licensePlate: 'QF2468F',

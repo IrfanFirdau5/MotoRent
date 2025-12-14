@@ -1,11 +1,15 @@
+// FILE: motorent/lib/screens/owner/owner_bookings_page.dart
+// REPLACE the entire file with this updated version
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '/models/booking.dart';
-import '/services/booking_service.dart';
 
 class OwnerBookingsPage extends StatefulWidget {
-  final int ownerId;
+  final dynamic ownerId; // Can accept int or String
 
   const OwnerBookingsPage({
     Key? key,
@@ -18,7 +22,6 @@ class OwnerBookingsPage extends StatefulWidget {
 
 class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     with SingleTickerProviderStateMixin {
-  final BookingService _bookingService = BookingService();
   late TabController _tabController;
 
   List<Booking> _allBookings = [];
@@ -49,15 +52,66 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     });
 
     try {
-      // In real app, fetch only owner's vehicle bookings
-      final bookings = await _bookingService.mockFetchUserBookings(widget.ownerId);
+      final currentUser = FirebaseAuth.instance.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      print('🔍 Loading bookings for owner: ${currentUser.uid}');
+
+      // Fetch all bookings for this owner's vehicles
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      print('📦 Query returned: ${querySnapshot.docs.length} bookings');
+
+      if (querySnapshot.docs.isEmpty) {
+        print('ℹ️  No bookings found');
+        setState(() {
+          _allBookings = [];
+          _categorizeBookings();
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Convert to booking objects
+      final bookings = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        
+        // Convert Timestamps to ISO strings
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp).toDate().toIso8601String();
+        }
+        if (data['start_date'] is Timestamp) {
+          data['start_date'] = (data['start_date'] as Timestamp).toDate().toIso8601String();
+        }
+        if (data['end_date'] is Timestamp) {
+          data['end_date'] = (data['end_date'] as Timestamp).toDate().toIso8601String();
+        }
+        
+        data['booking_id'] = doc.id;
+        
+        return Booking.fromJson(data);
+      }).toList();
+
+      // Sort by creation date (newest first)
+      bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      print('✅ Loaded ${bookings.length} bookings');
 
       setState(() {
         _allBookings = bookings;
         _categorizeBookings();
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error loading bookings: $e');
+      print('Stack trace: $stackTrace');
+      
       setState(() {
         _errorMessage = 'Failed to load bookings: $e';
         _isLoading = false;
@@ -74,17 +128,16 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
 
     _activeBookings = _allBookings.where((booking) {
       return booking.bookingStatus.toLowerCase() == 'confirmed' &&
-          booking.startDate.isBefore(now.add(const Duration(days: 30))) &&
           booking.endDate.isAfter(now);
     }).toList();
 
     _completedBookings = _allBookings.where((booking) {
       return booking.bookingStatus.toLowerCase() == 'completed' ||
           (booking.endDate.isBefore(now) &&
-              booking.bookingStatus.toLowerCase() != 'cancelled' &&
-              booking.bookingStatus.toLowerCase() != 'pending');
+              booking.bookingStatus.toLowerCase() == 'confirmed');
     }).toList();
 
+    // Sort each category
     _pendingBookings.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     _activeBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _completedBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
@@ -123,7 +176,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     );
 
     if (confirmed == true) {
-      _approveBooking(booking.bookingId);
+      _approveBooking(booking);
     }
   }
 
@@ -158,11 +211,11 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     );
 
     if (confirmed == true) {
-      _rejectBooking(booking.bookingId);
+      _rejectBooking(booking);
     }
   }
 
-  Future<void> _approveBooking(int bookingId) async {
+  Future<void> _approveBooking(Booking booking) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -171,23 +224,47 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       ),
     );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      print('✅ Approving booking: ${booking.bookingId}');
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(booking.bookingId.toString())
+          .update({
+        'booking_status': 'confirmed',
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Booking approved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      print('✅ Booking approved successfully');
 
-    _loadBookings();
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Booking approved successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      _loadBookings(); // Reload bookings
+
+    } catch (e) {
+      print('❌ Error approving booking: $e');
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to approve booking: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  Future<void> _rejectBooking(int bookingId) async {
+  Future<void> _rejectBooking(Booking booking) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -196,20 +273,44 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       ),
     );
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      print('❌ Rejecting booking: ${booking.bookingId}');
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(booking.bookingId.toString())
+          .update({
+        'booking_status': 'rejected',
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Booking rejected'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+      print('✅ Booking rejected successfully');
 
-    _loadBookings();
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Booking rejected'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      _loadBookings(); // Reload bookings
+
+    } catch (e) {
+      print('❌ Error rejecting booking: $e');
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to reject booking: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showBookingDetails(Booking booking) {
@@ -347,6 +448,13 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         title: const Text('Bookings'),
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadBookings,
+            tooltip: 'Refresh',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -398,10 +506,13 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -639,10 +750,12 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
                           onPressed: () => _showRejectDialog(booking),
+                          tooltip: 'Reject',
                         ),
                         IconButton(
                           icon: const Icon(Icons.check, color: Colors.green),
                           onPressed: () => _showApproveDialog(booking),
+                          tooltip: 'Approve',
                         ),
                       ],
                     ),
@@ -662,6 +775,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       case 'pending':
         return Colors.orange;
       case 'cancelled':
+      case 'rejected':
         return Colors.red;
       case 'completed':
         return Colors.blue;
