@@ -1,8 +1,11 @@
+// FILE: motorent/lib/screens/login_page.dart
+// UPDATE THE _navigateToUserPage METHOD (around line 120-150)
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
-import 'vehicle_listing_page.dart';
+import 'customer/vehicle_listing_page.dart';
 import 'register_page.dart';
 import 'driver/driver_dashboard_page.dart';
 import 'owner/owner_dashboard_page.dart';
@@ -23,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _useMockLogin = false; // Toggle for testing
+  bool _useMockLogin = false;
 
   @override
   void dispose() {
@@ -39,7 +42,6 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        // Use Firebase login or mock login based on toggle
         final result = _useMockLogin
             ? await _authService.mockLogin(
                 _emailController.text.trim(),
@@ -59,7 +61,6 @@ class _LoginPageState extends State<LoginPage> {
           
           if (!mounted) return;
 
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Welcome back, ${user.name}!'),
@@ -68,7 +69,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
 
-          // Navigate to appropriate page based on user type
           _navigateToUserPage(user);
         } else {
           if (!mounted) return;
@@ -99,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // ✅ UPDATE THIS METHOD - PASS USER TO VehicleListingPage
   void _navigateToUserPage(User user) {
     Widget destinationPage;
 
@@ -117,7 +118,8 @@ class _LoginPageState extends State<LoginPage> {
         break;
       case 'customer':
       default:
-        destinationPage = const VehicleListingPage();
+        // ✅ THIS IS THE KEY CHANGE - PASS user PARAMETER
+        destinationPage = VehicleListingPage(user: user);
         break;
     }
 
@@ -172,7 +174,6 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo Section
                   Icon(
                     Icons.directions_car,
                     size: 100,
@@ -180,7 +181,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // App Name
                   const Text(
                     'MotoRent',
                     textAlign: TextAlign.center,
@@ -202,7 +202,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 50),
                   
-                  // Welcome Text
                   const Text(
                     'Welcome Back!',
                     style: TextStyle(
@@ -220,7 +219,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   
-                  // Email Field
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -255,7 +253,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Password Field
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -302,7 +299,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Forgot Password
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -318,7 +314,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Login Button
                   SizedBox(
                     height: 55,
                     child: ElevatedButton(
@@ -347,7 +342,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   
-                  // Divider
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey[400])),
@@ -366,7 +360,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   
-                  // Sign Up Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -399,7 +392,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Mock Login Toggle (for development)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -422,7 +414,6 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   
-                  // Demo Credentials Info
                   if (_useMockLogin)
                     Container(
                       padding: const EdgeInsets.all(12),

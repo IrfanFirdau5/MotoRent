@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../models/vehicle.dart';
-import '../models/user.dart';
-import '../services/vehicle_service.dart';
-import 'customer/vehicle_detail_page.dart';
-import 'customer/user_profile_page.dart';
+import '../../models/vehicle.dart';
+import '../../models/user.dart';
+import '../../services/vehicle_service.dart';
+import 'vehicle_detail_page.dart';
+import '../../widgets/customer_drawer.dart';
 
 class VehicleListingPage extends StatefulWidget {
-  const VehicleListingPage({Key? key}) : super(key: key);
+  final User? user; // Make user optional for backward compatibility
+
+  const VehicleListingPage({Key? key, this.user}) : super(key: key);
 
   @override
   State<VehicleListingPage> createState() => _VehicleListingPageState();
@@ -42,7 +44,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     });
 
     try {
-      // Use mock data for now - switch to fetchVehicles() when backend is ready
       final vehicles = await _vehicleService.fetchMockVehicles();
       setState(() {
         _vehicles = vehicles;
@@ -121,7 +122,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Brand Filter
                   const Text(
                     'Brand',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -152,7 +152,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Price Range Filter
                   const Text(
                     'Price Range (per day)',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -180,7 +179,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Availability Filter
                   const Text(
                     'Availability',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -201,7 +199,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                   ),
                   const SizedBox(height: 30),
                   
-                  // Action Buttons
                   Row(
                     children: [
                       Expanded(
@@ -248,6 +245,8 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Add drawer if user is provided
+      drawer: widget.user != null ? CustomerDrawer(user: widget.user!) : null,
       appBar: AppBar(
         title: const Text(
           'Browse Vehicles',
@@ -256,36 +255,15 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
         elevation: 0,
+        // Only show menu icon if user is provided
+        automaticallyImplyLeading: widget.user != null,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
             tooltip: 'Filter',
           ),
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: () {
-              // Navigate to profile page
-              // TODO: Replace with actual logged-in user data
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserProfilePage(
-                    user: User(
-                      userId: 1,
-                      name: 'John Doe',
-                      email: 'customer@test.com',
-                      phone: '0123456789',
-                      address: 'Kuching, Sarawak',
-                      userType: 'customer',
-                      createdAt: DateTime.now(),
-                    ),
-                  ),
-                ),
-              );
-            },
-            tooltip: 'Profile',
-          ),
+          // Remove profile button - it's now in the sidebar
         ],
       ),
       body: _isLoading
@@ -356,191 +334,188 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     );
   }
 
-Widget _buildVehicleCard(Vehicle vehicle) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 3,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(15),
-    ),
-    child: InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VehicleDetailPage(
-              vehicle: vehicle,
-              userId: 1, // Replace with actual user ID from auth
+  Widget _buildVehicleCard(Vehicle vehicle) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VehicleDetailPage(
+                vehicle: vehicle,
+                userId: widget.user?.userId ?? 1,
+              ),
             ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Vehicle Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(15),
-            ),
-            child: Stack(
-              children: [
-                CachedNetworkImage(
-                  imageUrl: vehicle.imageUrl,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
+          );
+        },
+        borderRadius: BorderRadius.circular(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(15),
+              ),
+              child: Stack(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: vehicle.imageUrl,
                     height: 200,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.directions_car,
-                      size: 60,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: vehicle.isAvailable ? Colors.green : Colors.red,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      vehicle.isAvailable ? 'Available' : 'Unavailable',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                    errorWidget: (context, url, error) => Container(
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.directions_car,
+                        size: 60,
+                        color: Colors.grey,
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Vehicle Details
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vehicle.fullName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.store,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      vehicle.ownerName ?? 'Unknown Owner',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Star Rating Row
-                if (vehicle.rating != null)
-                  Row(
-                    children: [
-                      ...List.generate(5, (index) {
-                        if (index < vehicle.rating!.floor()) {
-                          return const Icon(
-                            Icons.star,
-                            size: 18,
-                            color: Colors.amber,
-                          );
-                        } else if (index == vehicle.rating!.floor() &&
-                            vehicle.rating! % 1 >= 0.5) {
-                          return const Icon(
-                            Icons.star_half,
-                            size: 18,
-                            color: Colors.amber,
-                          );
-                        } else {
-                          return Icon(
-                            Icons.star_border,
-                            size: 18,
-                            color: Colors.grey[400],
-                          );
-                        }
-                      }),
-                      const SizedBox(width: 6),
-                      Text(
-                        vehicle.rating!.toStringAsFixed(1),
+                      decoration: BoxDecoration(
+                        color: vehicle.isAvailable ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        vehicle.isAvailable ? 'Available' : 'Unavailable',
                         style: const TextStyle(
-                          fontSize: 16,
+                          color: Colors.white,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vehicle.fullName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.store,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 5),
                       Text(
-                        '(${vehicle.reviewCount ?? 0})',
+                        vehicle.ownerName ?? 'Unknown Owner',
                         style: TextStyle(
-                          fontSize: 14,
                           color: Colors.grey[600],
+                          fontSize: 14,
                         ),
                       ),
                     ],
                   ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 8),
+                  if (vehicle.rating != null)
+                    Row(
                       children: [
+                        ...List.generate(5, (index) {
+                          if (index < vehicle.rating!.floor()) {
+                            return const Icon(
+                              Icons.star,
+                              size: 18,
+                              color: Colors.amber,
+                            );
+                          } else if (index == vehicle.rating!.floor() &&
+                              vehicle.rating! % 1 >= 0.5) {
+                            return const Icon(
+                              Icons.star_half,
+                              size: 18,
+                              color: Colors.amber,
+                            );
+                          } else {
+                            return Icon(
+                              Icons.star_border,
+                              size: 18,
+                              color: Colors.grey[400],
+                            );
+                          }
+                        }),
+                        const SizedBox(width: 6),
                         Text(
-                          'RM ${vehicle.pricePerDay.toStringAsFixed(2)}',
+                          vehicle.rating!.toStringAsFixed(1),
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E88E5),
                           ),
                         ),
-                        const Text(
-                          'per day',
+                        const SizedBox(width: 4),
+                        Text(
+                          '(${vehicle.reviewCount ?? 0})',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey,
+                            color: Colors.grey[600],
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RM ${vehicle.pricePerDay.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E88E5),
+                            ),
+                          ),
+                          const Text(
+                            'per day',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
