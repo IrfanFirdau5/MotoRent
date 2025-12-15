@@ -1,12 +1,13 @@
 // FILE: motorent/lib/screens/customer/user_profile_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS VERSION
+// REPLACE THE ENTIRE FILE WITH THIS
 
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../login_page.dart';
-import '../customer/my_reviews_page.dart';
-import '../customer/my_bookings_page.dart';
+import 'my_reviews_page.dart';
+import 'my_bookings_page.dart';
+import 'license_verification_page.dart';
 
 class UserProfilePage extends StatefulWidget {
   final User user;
@@ -549,6 +550,240 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         onTap: _navigateToMyReviews,
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // License Verification Section
+                    if (widget.user.isCustomer) ...[
+                      const Text(
+                        'Driving License',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: widget.user.isLicenseVerified
+                                ? LinearGradient(
+                                    colors: [Colors.green[50]!, Colors.green[100]!],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : widget.user.licenseVerificationStatus == 'pending'
+                                    ? LinearGradient(
+                                        colors: [Colors.orange[50]!, Colors.orange[100]!],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : LinearGradient(
+                                        colors: [Colors.grey[50]!, Colors.grey[100]!],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: widget.user.isLicenseVerified
+                                          ? Colors.green
+                                          : widget.user.licenseVerificationStatus == 'pending'
+                                              ? Colors.orange
+                                              : Colors.grey,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      widget.user.isLicenseVerified
+                                          ? Icons.verified
+                                          : widget.user.licenseVerificationStatus == 'pending'
+                                              ? Icons.pending
+                                              : Icons.credit_card,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.user.licenseStatusDisplay,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: widget.user.isLicenseVerified
+                                                ? Colors.green[900]
+                                                : widget.user.licenseVerificationStatus == 'pending'
+                                                    ? Colors.orange[900]
+                                                    : Colors.grey[800],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          widget.user.isLicenseVerified
+                                              ? 'You can book vehicles'
+                                              : widget.user.licenseVerificationStatus == 'pending'
+                                                  ? 'Awaiting admin approval'
+                                                  : 'Required to book vehicles',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              if (widget.user.licenseNumber != null) ...[
+                                const SizedBox(height: 16),
+                                const Divider(height: 1),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Icon(Icons.credit_card, size: 16, color: Colors.grey[600]),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'License Number:',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.user.licenseNumber!,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              
+                              if (widget.user.licenseSubmittedAt != null) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Submitted:',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${widget.user.licenseSubmittedAt!.day}/${widget.user.licenseSubmittedAt!.month}/${widget.user.licenseSubmittedAt!.year}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              
+                              const SizedBox(height: 16),
+                              
+                              if (!widget.user.isLicenseVerified)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => LicenseVerificationPage(
+                                            user: widget.user,
+                                          ),
+                                        ),
+                                      );
+                                      
+                                      // Reload page if verification was submitted
+                                      if (result == true && mounted) {
+                                        // In a real app, you'd reload the user data here
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('License submitted! Please refresh to see updates.'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    icon: Icon(
+                                      widget.user.licenseVerificationStatus == null
+                                          ? Icons.upload
+                                          : Icons.refresh,
+                                    ),
+                                    label: Text(
+                                      widget.user.licenseVerificationStatus == null
+                                          ? 'Verify License'
+                                          : widget.user.licenseVerificationStatus == 'rejected'
+                                              ? 'Resubmit License'
+                                              : 'Update License',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1E88E5),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              
+                              if (widget.user.licenseVerificationStatus == 'rejected') ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.red[200]!),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: Colors.red[900], size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Your license verification was rejected. Please resubmit with a clearer photo.',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.red[900],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

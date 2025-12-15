@@ -1,9 +1,15 @@
+// FILE: motorent/lib/screens/customer/vehicle_detail_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:motorent/models/vehicle.dart';
 import 'view_reviews_page.dart';
 import 'booking_page.dart';
+import 'license_verification_page.dart';
+import '../../models/user.dart';
+import '../../services/auth_service.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Vehicle vehicle;
@@ -292,14 +298,111 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
 
-                  // Book Now Button - FIXED
+                  // Book Now Button - WITH LICENSE VERIFICATION CHECK
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: vehicle.isAvailable
-                          ? () {
-                              // Navigate to booking page
+                          ? () async {
+                              // Check if user is logged in
+                              final currentUser = await AuthService().getCurrentUser();
+                              
+                              if (currentUser == null) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please login to book a vehicle'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // Check if license is verified
+                              if (!currentUser.isLicenseVerified) {
+                                if (!context.mounted) return;
+                                
+                                // Show verification required dialog
+                                final shouldVerify = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Row(
+                                      children: [
+                                        Icon(Icons.verified_user, color: Color(0xFF1E88E5), size: 28),
+                                        SizedBox(width: 12),
+                                        Text('License Verification Required'),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'To book vehicles on MotoRent, you need to verify your driving license first.',
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue[50],
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.info_outline, color: Colors.blue[900], size: 20),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  'This is a one-time verification process that takes 24-48 hours.',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.blue[900],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Later'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF1E88E5),
+                                        ),
+                                        child: const Text(
+                                          'Verify Now',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (shouldVerify == true) {
+                                  if (!context.mounted) return;
+                                  // Navigate to license verification page
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => LicenseVerificationPage(
+                                        user: currentUser,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              // License is verified, proceed to booking
+                              if (!context.mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
