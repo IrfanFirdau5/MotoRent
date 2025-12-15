@@ -3,6 +3,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/user.dart';
 import '../../services/admin_service.dart';
+import '../../services/firebase_admin_service.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({Key? key}) : super(key: key);
@@ -12,7 +13,7 @@ class UserManagementPage extends StatefulWidget {
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
-  final AdminService _adminService = AdminService();
+  final FirebaseAdminService _adminService = FirebaseAdminService();
   List<User> _users = [];
   List<User> _filteredUsers = [];
   bool _isLoading = true;
@@ -39,7 +40,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
     });
 
     try {
-      final users = await _adminService.fetchMockUsers();
+      final users = await _adminService.fetchUsers(
+        userType: _selectedUserType == 'all' ? null : _selectedUserType,
+      );
       setState(() {
         _users = users;
         _filteredUsers = users;
@@ -71,7 +74,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Suspend User'),
-        content: Text('Are you sure you want to suspend ${user.name}?'),
+        content: Text('Are you sure you want to ${user.isActive ? "suspend" : "activate"} ${user.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -79,8 +82,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Suspend'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: user.isActive ? Colors.red : Colors.green,
+            ),
+            child: Text(user.isActive ? 'Suspend' : 'Activate'),
           ),
         ],
       ),
@@ -88,14 +93,24 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     if (confirmed == true) {
       try {
-        // await _adminService.suspendUser(user.userId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.name} has been suspended')),
+        final success = await _adminService.toggleUserActiveStatus(
+          user.userIdString,
+          !user.isActive,
         );
-        _loadUsers();
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${user.name} has been ${user.isActive ? "suspended" : "activated"}'),
+            ),
+          );
+          _loadUsers();
+        } else {
+          throw Exception('Failed to update user status');
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to suspend user: $e')),
+          SnackBar(content: Text('Failed to update user: $e')),
         );
       }
     }
@@ -125,11 +140,16 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     if (confirmed == true) {
       try {
-        // await _adminService.deleteUser(user.userId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.name} has been deleted')),
-        );
-        _loadUsers();
+        final success = await _adminService.deleteUser(user.userIdString);
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.name} has been deleted')),
+          );
+          _loadUsers();
+        } else {
+          throw Exception('Failed to delete user');
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete user: $e')),

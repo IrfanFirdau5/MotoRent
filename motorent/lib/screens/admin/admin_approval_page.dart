@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
+import '../../services/firebase_admin_service.dart';
+import '../../services/firebase_vehicle_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminApprovalPage extends StatefulWidget {
   const AdminApprovalPage({Key? key}) : super(key: key);
@@ -15,10 +18,10 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Mock data for pending driver registrations
+  final FirebaseAdminService _adminService = FirebaseAdminService();
+  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
+
   List<Map<String, dynamic>> _pendingDrivers = [];
-  
-  // Mock data for pending vehicle listings
   List<Map<String, dynamic>> _pendingVehicles = [];
 
   @override
@@ -41,68 +44,49 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Mock pending drivers data - using null for images to avoid network errors
-      _pendingDrivers = [
-        {
-          'id': 1,
-          'name': 'Ahmad bin Abdullah',
-          'email': 'ahmad.driver@example.com',
-          'phone': '+60123456789',
-          'ic_number': '950101015678',
-          'license_number': 'D1234567',
-          'address': 'Jalan Pending, Kuching, Sarawak',
-          'license_image': null, // Will be replaced with actual uploaded image from backend
-          'profile_image': null,
-          'submitted_at': DateTime.now().subtract(const Duration(hours: 5)),
-        },
-        {
-          'id': 2,
-          'name': 'Sarah Lim',
-          'email': 'sarah.driver@example.com',
-          'phone': '+60198765432',
-          'ic_number': '920505026789',
-          'license_number': 'D7654321',
-          'address': 'Lorong Batu Lintang, Kuching, Sarawak',
+      // Fetch pending users (drivers/owners)
+      final pendingUsers = await _adminService.getPendingApprovalUsers();
+      
+      _pendingDrivers = pendingUsers.map((user) {
+        return {
+          'id': user.userIdString,
+          'name': user.name,
+          'email': user.email,
+          'phone': user.phone,
+          'ic_number': '', // Add this field to User model if needed
+          'license_number': '', // Add this field to User model if needed
+          'address': user.address,
           'license_image': null,
-          'profile_image': null,
-          'submitted_at': DateTime.now().subtract(const Duration(hours: 12)),
-        },
-      ];
+          'profile_image': user.profileImage,
+          'submitted_at': user.createdAt,
+          'user_type': user.userType,
+        };
+      }).toList();
 
-      // Mock pending vehicles data - using null for images to avoid network errors
-      _pendingVehicles = [
-        {
-          'id': 1,
-          'vehicle_name': 'Toyota Vios 2020',
-          'owner_name': 'Ahmad Rentals',
-          'owner_email': 'ahmad.rentals@example.com',
-          'owner_phone': '+60123456789',
-          'brand': 'Toyota',
-          'model': 'Vios',
-          'license_plate': 'QA1234A',
-          'price_per_day': 120.00,
-          'description': 'Well-maintained sedan, perfect for city driving.',
-          'vehicle_image': null, // Will be replaced with actual uploaded image from backend
-          'submitted_at': DateTime.now().subtract(const Duration(hours: 3)),
-        },
-        {
-          'id': 2,
-          'vehicle_name': 'Perodua Myvi 2021',
-          'owner_name': 'Budget Cars Sdn Bhd',
-          'owner_email': 'budget@example.com',
-          'owner_phone': '+60187654321',
-          'brand': 'Perodua',
-          'model': 'Myvi',
-          'license_plate': 'QB5678B',
-          'price_per_day': 80.00,
-          'description': 'Affordable and fuel-efficient compact car.',
-          'vehicle_image': null,
-          'submitted_at': DateTime.now().subtract(const Duration(hours: 8)),
-        },
-      ];
+      // Fetch pending vehicles
+      final vehiclesSnapshot = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('approval_status', isEqualTo: 'pending')
+          .where('is_deleted', isEqualTo: false)
+          .get();
+
+      _pendingVehicles = vehiclesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'vehicle_name': '${data['brand']} ${data['model']}',
+          'owner_name': data['owner_name'] ?? 'Unknown',
+          'owner_email': '', // Fetch from users collection if needed
+          'owner_phone': '', // Fetch from users collection if needed
+          'brand': data['brand'],
+          'model': data['model'],
+          'license_plate': data['license_plate'],
+          'price_per_day': (data['price_per_day'] as num).toDouble(),
+          'description': data['description'] ?? '',
+          'vehicle_image': data['image_url'],
+          'submitted_at': (data['created_at'] as Timestamp).toDate(),
+        };
+      }).toList();
 
       setState(() {
         _isLoading = false;
@@ -115,12 +99,13 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     }
   }
 
+
   Future<void> _approveDriver(Map<String, dynamic> driver) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Approve Driver'),
-        content: Text('Approve ${driver['name']} as a driver?'),
+        content: Text('Approve ${driver['name']} as a ${driver['user_type']}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -138,20 +123,39 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     );
 
     if (confirmed == true) {
-      // TODO: Implement actual API call
-      setState(() {
-        _pendingDrivers.removeWhere((d) => d['id'] == driver['id']);
-      });
+      try {
+        final success = await _adminService.updateUserApprovalStatus(
+          driver['id'],
+          'approved',
+        );
+        
+        if (success) {
+          setState(() {
+            _pendingDrivers.removeWhere((d) => d['id'] == driver['id']);
+          });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${driver['name']} has been approved as a driver'),
-          backgroundColor: Colors.green,
-        ),
-      );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${driver['name']} has been approved'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          throw Exception('Failed to approve user');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to approve: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
+
 
   Future<void> _rejectDriver(Map<String, dynamic> driver) async {
     final TextEditingController reasonController = TextEditingController();
@@ -159,7 +163,7 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reject Driver Application'),
+        title: const Text('Reject Application'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -195,18 +199,37 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     );
 
     if (confirmed == true) {
-      // TODO: Implement actual API call with rejection reason
-      setState(() {
-        _pendingDrivers.removeWhere((d) => d['id'] == driver['id']);
-      });
+      try {
+        final success = await _adminService.updateUserApprovalStatus(
+          driver['id'],
+          'rejected',
+          rejectionReason: reasonController.text.trim(),
+        );
+        
+        if (success) {
+          setState(() {
+            _pendingDrivers.removeWhere((d) => d['id'] == driver['id']);
+          });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${driver['name']}\'s application has been rejected'),
-          backgroundColor: Colors.red,
-        ),
-      );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${driver['name']}\'s application has been rejected'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        } else {
+          throw Exception('Failed to reject user');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reject: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -233,18 +256,37 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     );
 
     if (confirmed == true) {
-      // TODO: Implement actual API call
-      setState(() {
-        _pendingVehicles.removeWhere((v) => v['id'] == vehicle['id']);
-      });
+      try {
+        // Update approval_status to approved
+        await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(vehicle['id'])
+            .update({
+          'approval_status': 'approved',
+          'approved_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        
+        setState(() {
+          _pendingVehicles.removeWhere((v) => v['id'] == vehicle['id']);
+        });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${vehicle['vehicle_name']} has been approved'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${vehicle['vehicle_name']} has been approved'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to approve vehicle: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -290,18 +332,37 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
     );
 
     if (confirmed == true) {
-      // TODO: Implement actual API call with rejection reason
-      setState(() {
-        _pendingVehicles.removeWhere((v) => v['id'] == vehicle['id']);
-      });
+      try {
+        await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(vehicle['id'])
+            .update({
+          'approval_status': 'rejected',
+          'rejection_reason': reasonController.text.trim(),
+          'rejected_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        
+        setState(() {
+          _pendingVehicles.removeWhere((v) => v['id'] == vehicle['id']);
+        });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${vehicle['vehicle_name']} has been rejected'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${vehicle['vehicle_name']} has been rejected'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reject vehicle: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

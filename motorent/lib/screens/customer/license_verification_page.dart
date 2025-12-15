@@ -87,7 +87,6 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
         await _firestore.collection('users').doc(widget.user.userIdString).update({
           'license_number': _licenseNumberController.text.trim(),
           'license_verification_status': 'pending',
-          'license_submitted_at': FieldValue.serverTimestamp(),
           'is_license_verified': false,
         });
 

@@ -3,6 +3,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/report.dart';
 import '../../services/admin_service.dart';
+import '../../services/firebase_report_service.dart';
 
 class ReportManagementPage extends StatefulWidget {
   const ReportManagementPage({Key? key}) : super(key: key);
@@ -12,7 +13,7 @@ class ReportManagementPage extends StatefulWidget {
 }
 
 class _ReportManagementPageState extends State<ReportManagementPage> {
-  final AdminService _adminService = AdminService();
+  final FirebaseReportService _reportService = FirebaseReportService();
   List<Report> _reports = [];
   List<Report> _filteredReports = [];
   bool _isLoading = true;
@@ -40,7 +41,9 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
     });
 
     try {
-      final reports = await _adminService.fetchMockReports();
+      final reports = await _reportService.fetchReports(
+        status: _selectedFilter == 'all' ? null : _selectedFilter,
+      );
       setState(() {
         _reports = reports;
         _filteredReports = reports;
@@ -54,6 +57,7 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
       });
     }
   }
+
 
   void _applyFilter() {
     setState(() {
@@ -105,12 +109,25 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
+                        Row(
+                          children: [
+                            // Add delete icon button
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _deleteReport(report);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    // ... rest of the dialog content stays the same
                     const SizedBox(height: 20),
                     _buildDetailRow(
                       'Report ID',
@@ -289,11 +306,29 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
   }
 
   Future<void> _investigateReport(Report report) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Report #${report.reportId} is now under investigation')),
-    );
-    _loadReports();
+    try {
+      final success = await _reportService.updateReportStatus(
+        report.reportId.toString(),
+        'investigating',
+      );
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Report #${report.reportId} is now under investigation'),
+          ),
+        );
+        _loadReports();
+      } else {
+        throw Exception('Failed to update report status');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update report: $e')),
+      );
+    }
   }
+
 
   Future<void> _resolveReport(Report report, String notes) async {
     if (notes.trim().isEmpty) {
@@ -324,14 +359,67 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
 
     if (confirmed == true) {
       try {
-        // await _adminService.resolveReport(report.reportId, notes);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Report #${report.reportId} has been resolved')),
+        final success = await _reportService.updateReportStatus(
+          report.reportId.toString(),
+          'resolved',
+          adminNotes: notes,
         );
-        _loadReports();
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Report #${report.reportId} has been resolved')),
+          );
+          _loadReports();
+        } else {
+          throw Exception('Failed to resolve report');
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to resolve report: $e')),
+        );
+      }
+    }
+  }
+
+    Future<void> _deleteReport(Report report) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Report'),
+        content: Text(
+          'Are you sure you want to permanently delete report #${report.reportId}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _reportService.deleteReport(
+          report.reportId.toString(),
+        );
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Report #${report.reportId} has been deleted')),
+          );
+          _loadReports();
+        } else {
+          throw Exception('Failed to delete report');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete report: $e')),
         );
       }
     }
@@ -358,12 +446,29 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
     );
 
     if (confirmed == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Report #${report.reportId} has been dismissed')),
-      );
-      _loadReports();
+      try {
+        final success = await _reportService.updateReportStatus(
+          report.reportId.toString(),
+          'dismissed',
+          adminNotes: notes.isNotEmpty ? notes : 'Dismissed by admin',
+        );
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Report #${report.reportId} has been dismissed')),
+          );
+          _loadReports();
+        } else {
+          throw Exception('Failed to dismiss report');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to dismiss report: $e')),
+        );
+      }
     }
   }
+
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(

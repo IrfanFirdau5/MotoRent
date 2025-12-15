@@ -3,6 +3,8 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../services/admin_service.dart';
+import '../../services/firebase_booking_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BookingManagementPage extends StatefulWidget {
   const BookingManagementPage({Key? key}) : super(key: key);
@@ -12,7 +14,7 @@ class BookingManagementPage extends StatefulWidget {
 }
 
 class _BookingManagementPageState extends State<BookingManagementPage> {
-  final AdminService _adminService = AdminService();
+  final FirebaseBookingService _bookingService = FirebaseBookingService();
   List<Booking> _bookings = [];
   List<Booking> _filteredBookings = [];
   bool _isLoading = true;
@@ -40,7 +42,35 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     });
 
     try {
-      final bookings = await _adminService.fetchMockBookings();
+      // Get all bookings (no owner filter for admin)
+      final bookingsSnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .orderBy('created_at', descending: true)
+          .get();
+
+      final bookings = bookingsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['booking_id'] = doc.id;
+        
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        if (data['start_date'] is Timestamp) {
+          data['start_date'] = (data['start_date'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        if (data['end_date'] is Timestamp) {
+          data['end_date'] = (data['end_date'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        
+        return Booking.fromJson(data);
+      }).toList();
+
       setState(() {
         _bookings = bookings;
         _filteredBookings = bookings;
@@ -188,10 +218,25 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     );
 
     if (confirmed == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking #${booking.bookingId} confirmed')),
-      );
-      _loadBookings();
+      try {
+        final success = await _bookingService.updateBookingStatus(
+          booking.bookingId.toString(),
+          'confirmed',
+        );
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Booking #${booking.bookingId} confirmed')),
+          );
+          _loadBookings();
+        } else {
+          throw Exception('Failed to confirm booking');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to confirm booking: $e')),
+        );
+      }
     }
   }
 
@@ -218,10 +263,25 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     );
 
     if (confirmed == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking #${booking.bookingId} cancelled')),
-      );
-      _loadBookings();
+      try {
+        final success = await _bookingService.cancelBooking(
+          booking.bookingId.toString(),
+          'Cancelled by admin',
+        );
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Booking #${booking.bookingId} cancelled')),
+          );
+          _loadBookings();
+        } else {
+          throw Exception('Failed to cancel booking');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel booking: $e')),
+        );
+      }
     }
   }
 

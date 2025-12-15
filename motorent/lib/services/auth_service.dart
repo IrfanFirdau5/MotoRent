@@ -140,6 +140,8 @@ class AuthService {
         'created_at': DateTime.now().toIso8601String(),
         'is_active': userType == 'customer' ? true : false, // Auto-approve customers, require approval for drivers/owners
         'profile_image': null,
+        'approval_status': userType == 'customer' ? 'approved' : 'pending', // Add this
+        'rejection_reason': null, // Add this
       };
 
       // Add additional data if provided (for driver/owner registration)

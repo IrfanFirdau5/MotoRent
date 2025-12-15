@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../services/firebase_admin_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
@@ -18,7 +19,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   DateTime _selectedMonth = DateTime.now();
-  
+
+  final FirebaseAdminService _adminService = FirebaseAdminService();
   // Report data
   Map<String, dynamic> _reportData = {};
 
@@ -35,75 +37,14 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Mock report data
-      _reportData = {
-        'month': DateFormat('MMMM yyyy').format(_selectedMonth),
-        'revenue': {
-          'total': 45780.50,
-          'vehicle_rentals': 38500.00,
-          'driver_services': 7280.50,
-          'growth_percentage': 12.5,
-          'previous_month': 40693.78,
-        },
-        'expenses': {
-          'total': 8950.00,
-          'maintenance': 3200.00,
-          'insurance': 2500.00,
-          'platform_fees': 1800.00,
-          'marketing': 1450.00,
-        },
-        'profit': 36830.50,
-        'profit_margin': 80.5,
-        'users': {
-          'new_registrations': 47,
-          'total_users': 245,
-          'active_users': 189,
-          'by_type': {
-            'customers': 28,
-            'owners': 12,
-            'drivers': 7,
-          },
-        },
-        'vehicles': {
-          'total_listed': 89,
-          'new_listings': 8,
-          'active_listings': 76,
-          'pending_approval': 3,
-        },
-        'bookings': {
-          'total': 134,
-          'completed': 98,
-          'ongoing': 21,
-          'cancelled': 15,
-          'cancellation_rate': 11.2,
-        },
-        'issues': {
-          'total_reports': 18,
-          'resolved': 14,
-          'pending': 4,
-          'resolution_rate': 77.8,
-        },
-        'ratings': {
-          'average_vehicle_rating': 4.3,
-          'average_driver_rating': 4.5,
-          'total_reviews': 87,
-        },
-        'top_vehicles': [
-          {'name': 'Toyota Vios', 'bookings': 23, 'revenue': 2760.00},
-          {'name': 'Perodua Myvi', 'bookings': 19, 'revenue': 1520.00},
-          {'name': 'Honda Civic', 'bookings': 17, 'revenue': 2550.00},
-        ],
-        'top_owners': [
-          {'name': 'Ahmad Rentals', 'vehicles': 5, 'revenue': 6800.00},
-          {'name': 'Budget Cars', 'vehicles': 4, 'revenue': 4200.00},
-          {'name': 'Sarawak Motors', 'vehicles': 3, 'revenue': 3900.00},
-        ],
-      };
+      final reportData = await _adminService.getMonthlyReportData(
+        _selectedMonth.month,
+        _selectedMonth.year,
+      );
 
       setState(() {
+        _reportData = reportData;
+        _reportData['month'] = DateFormat('MMMM yyyy').format(_selectedMonth);
         _isLoading = false;
       });
     } catch (e) {
