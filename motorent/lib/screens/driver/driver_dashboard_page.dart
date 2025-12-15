@@ -10,6 +10,7 @@ import 'driver_earnings_page.dart';
 import 'driver_profile_page.dart';
 import '../login_page.dart';
 import '../../services/auth_service.dart';
+import 'driver_report_page.dart';
 
 class DriverDashboardPage extends StatefulWidget {
   final User driver;
@@ -495,6 +496,26 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                         );
                       },
                     ),
+                    const SizedBox(height: 12),
+                    
+                    _buildActionCard(
+                      'Report Issue',
+                      'Report problems or concerns',
+                      Icons.report_problem,
+                      Colors.red,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DriverReportPage(
+                              userId: widget.driver.userIdString,
+                              userName: widget.driver.name,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
                   ],
                 ),
               ),
