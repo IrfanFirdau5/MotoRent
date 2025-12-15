@@ -13,7 +13,7 @@ import '../../services/auth_service.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Vehicle vehicle;
-  final int userId;
+  final String userId;
 
   const VehicleDetailPage({
     Key? key,

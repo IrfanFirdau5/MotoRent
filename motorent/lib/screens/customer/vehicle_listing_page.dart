@@ -348,7 +348,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
             MaterialPageRoute(
               builder: (context) => VehicleDetailPage(
                 vehicle: vehicle,
-                userId: widget.user?.userId ?? 1,
+                userId: widget.user?.userId ?? '1',
               ),
             ),
           );

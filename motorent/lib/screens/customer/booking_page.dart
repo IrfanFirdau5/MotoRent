@@ -8,7 +8,7 @@ import 'booking_confirmation_page.dart';
 
 class BookingPage extends StatefulWidget {
   final Vehicle vehicle;
-  final int userId;
+  final String userId;
 
   const BookingPage({
     Key? key,
