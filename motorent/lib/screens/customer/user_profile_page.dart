@@ -678,30 +678,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                 ),
                               ],
                               
-                              if (widget.user.licenseSubmittedAt != null) ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Submitted:',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${widget.user.licenseSubmittedAt!.day}/${widget.user.licenseSubmittedAt!.month}/${widget.user.licenseSubmittedAt!.year}',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
                               
                               const SizedBox(height: 16),
                               

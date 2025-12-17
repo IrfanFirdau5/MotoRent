@@ -8,6 +8,7 @@ import 'booking_management_page.dart';
 import 'report_management_page.dart';
 import 'admin_approval_page.dart';
 import 'admin_monthly_report_page.dart';
+import '../../services/firebase_admin_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({Key? key}) : super(key: key);
@@ -17,7 +18,8 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-  final AdminService _adminService = AdminService();
+  final FirebaseAdminService _adminService = FirebaseAdminService();
+  
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
   String _errorMessage = '';
@@ -35,7 +37,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     });
 
     try {
-      final stats = await _adminService.fetchMockDashboardStats();
+      // Replace mock call with Firebase call
+      final stats = await _adminService.getDashboardStats();
       setState(() {
         _stats = stats;
         _isLoading = false;

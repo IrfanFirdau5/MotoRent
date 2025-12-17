@@ -304,10 +304,10 @@ class AdminService {
     return [
       Report(
         reportId: 1,
-        reporterId: 1,
+        reporterId: '1',
         reporterName: 'Ahmad bin Abdullah',
         reportType: 'vehicle',
-        relatedId: 5,
+        relatedId: '5',
         subject: 'Vehicle not as described',
         description: 'The vehicle had several scratches that were not mentioned in the listing.',
         status: 'pending',
@@ -315,10 +315,10 @@ class AdminService {
       ),
       Report(
         reportId: 2,
-        reporterId: 4,
+        reporterId: '4',
         reporterName: 'Fatimah Hassan',
         reportType: 'user',
-        relatedId: 2,
+        relatedId: '2',
         subject: 'Unprofessional behavior',
         description: 'The car owner was rude and unhelpful during pickup.',
         status: 'investigating',
@@ -326,10 +326,10 @@ class AdminService {
       ),
       Report(
         reportId: 3,
-        reporterId: 2,
+        reporterId: '2',
         reporterName: 'Sarah Lim',
         reportType: 'booking',
-        relatedId: 15,
+        relatedId: '15',
         subject: 'Customer did not return vehicle',
         description: 'Customer is 2 days late returning the vehicle and not responding to calls.',
         status: 'resolved',

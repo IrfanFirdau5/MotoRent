@@ -1,10 +1,13 @@
 // FILE: motorent/lib/widgets/customer_drawer.dart
+// REPLACE THE ENTIRE FILE
+
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../screens/customer/my_bookings_page.dart';
 import '../screens/customer/my_reviews_page.dart';
 import '../screens/customer/user_profile_page.dart';
 import '../screens/customer/customer_report_page.dart';
+import '../screens/customer/vehicle_listing_page.dart';
 import '../services/auth_service.dart';
 import '../screens/login_page.dart';
 
@@ -30,8 +33,8 @@ class CustomerDrawer extends StatelessWidget {
               left: 20,
               right: 20,
             ),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
                 colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -78,6 +81,27 @@ class CustomerDrawer extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.home,
+                  title: 'Browse Vehicles',
+                  subtitle: 'Find and book vehicles',
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    // Only navigate if not already on vehicle listing page
+                    if (ModalRoute.of(context)?.settings.name != '/vehicles') {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VehicleListingPage(user: user),
+                          settings: const RouteSettings(name: '/vehicles'),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  },
+                ),
+                const Divider(height: 1),
                 _buildDrawerItem(
                   context,
                   icon: Icons.calendar_today,

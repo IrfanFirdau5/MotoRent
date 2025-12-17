@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../models/vehicle.dart';
 import '../../services/vehicle_service.dart';
+import '../../services/firebase_vehicle_service.dart';
 
 class VehicleManagementPage extends StatefulWidget {
   const VehicleManagementPage({Key? key}) : super(key: key);
@@ -13,7 +14,7 @@ class VehicleManagementPage extends StatefulWidget {
 }
 
 class _VehicleManagementPageState extends State<VehicleManagementPage> {
-  final VehicleService _vehicleService = VehicleService();
+  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
   List<Vehicle> _vehicles = [];
   List<Vehicle> _filteredVehicles = [];
   bool _isLoading = true;
@@ -39,7 +40,9 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
     });
 
     try {
-      final vehicles = await _vehicleService.fetchMockVehicles();
+      final vehicles = await _vehicleService.fetchFilteredVehicles(
+        availabilityStatus: _selectedFilter == 'all' ? null : _selectedFilter,
+      );
       setState(() {
         _vehicles = vehicles;
         _filteredVehicles = vehicles;
@@ -53,6 +56,7 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
       });
     }
   }
+
 
   void _applyFilter() {
     setState(() {
@@ -71,9 +75,9 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Disable Vehicle'),
+        title: const Text('Toggle Vehicle Status'),
         content: Text(
-          'Are you sure you want to disable ${vehicle.fullName}? This will make it unavailable for bookings.',
+          'Are you sure you want to ${vehicle.isAvailable ? "disable" : "enable"} ${vehicle.fullName}?',
         ),
         actions: [
           TextButton(
@@ -82,8 +86,10 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Disable'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: vehicle.isAvailable ? Colors.orange : Colors.green,
+            ),
+            child: Text(vehicle.isAvailable ? 'Disable' : 'Enable'),
           ),
         ],
       ),
@@ -91,14 +97,24 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
 
     if (confirmed == true) {
       try {
-        // await _adminService.disableVehicle(vehicle.vehicleId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${vehicle.fullName} has been disabled')),
+        final success = await _vehicleService.updateAvailabilityStatus(
+          vehicle.vehicleId.toString(),
+          vehicle.isAvailable ? 'unavailable' : 'available',
         );
-        _loadVehicles();
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${vehicle.fullName} has been ${vehicle.isAvailable ? "disabled" : "enabled"}'),
+            ),
+          );
+          _loadVehicles();
+        } else {
+          throw Exception('Failed to update vehicle status');
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to disable vehicle: $e')),
+          SnackBar(content: Text('Failed to update vehicle: $e')),
         );
       }
     }
@@ -128,11 +144,18 @@ class _VehicleManagementPageState extends State<VehicleManagementPage> {
 
     if (confirmed == true) {
       try {
-        // await _adminService.deleteVehicle(vehicle.vehicleId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${vehicle.fullName} has been deleted')),
+        final success = await _vehicleService.deleteVehicle(
+          vehicle.vehicleId.toString(),
         );
-        _loadVehicles();
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${vehicle.fullName} has been deleted')),
+          );
+          _loadVehicles();
+        } else {
+          throw Exception('Failed to delete vehicle');
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete vehicle: $e')),

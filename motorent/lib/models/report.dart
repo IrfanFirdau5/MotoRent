@@ -1,12 +1,12 @@
 class Report {
-  final int reportId;
-  final int reporterId;
+  final dynamic reportId; // Changed from int to dynamic
+  final String reporterId; // Changed from int to String
   final String reporterName;
-  final String reportType; // user, vehicle, booking, other
-  final int? relatedId; // ID of the reported entity
+  final String reportType;
+  final String? relatedId; // Changed from int? to String?
   final String subject;
   final String description;
-  final String status; // pending, investigating, resolved, dismissed
+  final String status;
   final DateTime createdAt;
   final DateTime? resolvedAt;
   final String? adminNotes;
@@ -27,19 +27,23 @@ class Report {
 
   factory Report.fromJson(Map<String, dynamic> json) {
     return Report(
-      reportId: json['report_id'] ?? 0,
-      reporterId: json['reporter_id'] ?? 0,
+      reportId: json['report_id'] ?? '',
+      reporterId: json['reporter_id']?.toString() ?? '',
       reporterName: json['reporter_name'] ?? '',
       reportType: json['report_type'] ?? 'other',
-      relatedId: json['related_id'],
+      relatedId: json['related_id']?.toString(),
       subject: json['subject'] ?? '',
       description: json['description'] ?? '',
       status: json['status'] ?? 'pending',
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? (json['created_at'] is String 
+              ? DateTime.parse(json['created_at'])
+              : DateTime.now())
           : DateTime.now(),
       resolvedAt: json['resolved_at'] != null
-          ? DateTime.parse(json['resolved_at'])
+          ? (json['resolved_at'] is String
+              ? DateTime.parse(json['resolved_at'])
+              : null)
           : null,
       adminNotes: json['admin_notes'],
     );
@@ -60,4 +64,7 @@ class Report {
       'admin_notes': adminNotes,
     };
   }
+
+  // Helper method to get report ID as String
+  String get reportIdString => reportId.toString();
 }

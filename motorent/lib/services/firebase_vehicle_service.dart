@@ -52,6 +52,9 @@ class FirebaseVehicleService {
         'total_bookings': 0,
         'total_revenue': 0.0,
         'is_deleted': false,
+        'approval_status': 'pending', // Add this - requires admin approval
+        'approved_at': null, // Add this
+        'rejection_reason': null, // Add this
       };
 
       final docRef = await _firestore.collection(_vehiclesCollection).add(vehicleData);

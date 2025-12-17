@@ -1,17 +1,22 @@
+// FILE: motorent/lib/screens/customer/my_bookings_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../../../models/booking.dart';
-import '../../../models/vehicle.dart';
-import '../../../services/booking_service.dart';
-import '../../../services/vehicle_service.dart';
-import '../../../services/review_service.dart';
-import 'submit_review_page.dart';
+import '../../models/booking.dart';
+import '../../models/vehicle.dart';
+import '../../models/user.dart';
+import '../../services/firebase_booking_service.dart';
+import '../../services/vehicle_service.dart';
+import '../../services/review_service.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/customer_drawer.dart';
 import 'vehicle_listing_page.dart';
 import 'add_review_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
-  final String userId; // Changed to String for Firebase UID
+  final String userId;
   
   const MyBookingsPage({
     Key? key,
@@ -24,11 +29,13 @@ class MyBookingsPage extends StatefulWidget {
 
 class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
-  final BookingService _bookingService = BookingService();
+  final FirebaseBookingService _bookingService = FirebaseBookingService();
   final VehicleService _vehicleService = VehicleService();
   final ReviewService _reviewService = ReviewService();
+  final AuthService _authService = AuthService();
   late TabController _tabController;
 
+  User? _currentUser;
   List<Booking> _allBookings = [];
   List<Booking> _upcomingBookings = [];
   List<Booking> _pastBookings = [];
@@ -37,13 +44,25 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   String _errorMessage = '';
 
   // Track which bookings have reviews (booking_id -> has_review)
-  Map<int, bool> _reviewStatus = {};
+  Map<String, bool> _reviewStatus = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadCurrentUser();
     _loadBookings();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      setState(() {
+        _currentUser = user;
+      });
+    } catch (e) {
+      print('Error loading user: $e');
+    }
   }
 
   @override
@@ -59,16 +78,26 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      final bookings = await _bookingService.mockFetchUserBookings(int.parse(widget.userId));
+      print('🔍 Loading bookings for user: ${widget.userId}');
+      
+      // Fetch bookings from Firebase
+      final bookings = await _bookingService.fetchUserBookings(widget.userId);
+      
+      print('✅ Loaded ${bookings.length} bookings');
       
       // Check review status for each completed booking
       for (var booking in bookings) {
         if (booking.bookingStatus.toLowerCase() == 'completed') {
-          final hasReview = await _reviewService.hasReviewedBooking(
-            widget.userId,
-            booking.bookingId,
-          );
-          _reviewStatus[booking.bookingId] = hasReview;
+          try {
+            final hasReview = await _reviewService.hasReviewedBooking(
+              widget.userId,
+              booking.bookingId,
+            );
+            _reviewStatus[booking.bookingId.toString()] = hasReview;
+          } catch (e) {
+            print('Error checking review status for booking ${booking.bookingId}: $e');
+            _reviewStatus[booking.bookingId.toString()] = false;
+          }
         }
       }
 
@@ -78,6 +107,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading bookings: $e');
       setState(() {
         _errorMessage = 'Failed to load bookings: $e';
         _isLoading = false;
@@ -87,6 +117,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   void _categorizeBookings() {
     final now = DateTime.now();
+    
     _upcomingBookings = _allBookings.where((booking) {
       return (booking.bookingStatus.toLowerCase() == 'confirmed' ||
               booking.bookingStatus.toLowerCase() == 'pending') &&
@@ -96,11 +127,13 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     _pastBookings = _allBookings.where((booking) {
       return booking.bookingStatus.toLowerCase() == 'completed' ||
           (booking.endDate.isBefore(now) &&
-              booking.bookingStatus.toLowerCase() != 'cancelled');
+              booking.bookingStatus.toLowerCase() != 'cancelled' &&
+              booking.bookingStatus.toLowerCase() != 'rejected');
     }).toList();
 
     _cancelledBookings = _allBookings.where((booking) {
-      return booking.bookingStatus.toLowerCase() == 'cancelled';
+      return booking.bookingStatus.toLowerCase() == 'cancelled' ||
+             booking.bookingStatus.toLowerCase() == 'rejected';
     }).toList();
 
     _upcomingBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
@@ -117,7 +150,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
           content: Text(
             'Are you sure you want to cancel this booking for ${booking.vehicleName}?\n\n'
             'Start Date: ${DateFormat('dd MMM yyyy').format(booking.startDate)}\n'
-            'End Date: ${DateFormat('dd MMM yyyy').format(booking.endDate)}',
+            'End Date: ${DateFormat('dd MMM yyyy').format(booking.endDate)}\n\n'
+            'Note: Cancellation policies may apply.',
           ),
           actions: [
             TextButton(
@@ -140,11 +174,11 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     );
 
     if (confirmed == true) {
-      _cancelBooking(booking.bookingId);
+      _cancelBooking(booking.bookingId.toString());
     }
   }
 
-  Future<void> _cancelBooking(int bookingId) async {
+  Future<void> _cancelBooking(String bookingId) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -154,22 +188,26 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     );
 
     try {
-      final result = await _bookingService.mockCancelBooking(bookingId);
+      final success = await _bookingService.cancelBooking(
+        bookingId,
+        'Cancelled by customer',
+      );
+      
       if (!mounted) return;
       Navigator.pop(context);
 
-      if (result['success']) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
+          const SnackBar(
+            content: Text('Booking cancelled successfully'),
             backgroundColor: Colors.green,
           ),
         );
         _loadBookings();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
+          const SnackBar(
+            content: Text('Failed to cancel booking'),
             backgroundColor: Colors.red,
           ),
         );
@@ -177,6 +215,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -187,35 +226,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   }
 
   Future<void> _writeReview(Booking booking) async {
-    // Get vehicle details
-    Vehicle? vehicle;
-    try {
-      final vehicles = await _vehicleService.fetchMockVehicles();
-      vehicle = vehicles.firstWhere(
-        (v) => v.vehicleId == booking.vehicleId,
-        orElse: () => Vehicle(
-          vehicleId: booking.vehicleId,
-          ownerId: '0',
-          brand: 'Unknown',
-          model: 'Vehicle',
-          licensePlate: '',
-          pricePerDay: 0,
-          description: '',
-          availabilityStatus: 'unavailable',
-          imageUrl: '',
-          createdAt: DateTime.now(),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to load vehicle details'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     // Navigate to review page
     final result = await Navigator.push(
       context,
@@ -229,13 +239,14 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
     // If review was submitted successfully, reload bookings
     if (result == true) {
-      _loadBookings(); // This will refresh the review status
+      _loadBookings();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _currentUser != null ? CustomerDrawer(user: _currentUser!) : null,
       appBar: AppBar(
         title: const Text('My Bookings'),
         backgroundColor: const Color(0xFF1E88E5),
@@ -248,7 +259,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const VehicleListingPage(),
+                  builder: (context) => VehicleListingPage(user: _currentUser),
                 ),
                 (route) => false,
               );
@@ -306,10 +317,13 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -377,13 +391,15 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   Widget _buildBookingCard(Booking booking, String type) {
     final canCancel = type == 'upcoming' &&
+        booking.bookingStatus.toLowerCase() != 'cancelled' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
     
     final canReview = type == 'past' && 
         booking.bookingStatus.toLowerCase() == 'completed' &&
-        !(_reviewStatus[booking.bookingId] ?? false);
+        !(_reviewStatus[booking.bookingId.toString()] ?? false);
     
-    final hasReviewed = type == 'past' && (_reviewStatus[booking.bookingId] ?? false);
+    final hasReviewed = type == 'past' && 
+        (_reviewStatus[booking.bookingId.toString()] ?? false);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -399,13 +415,17 @@ class _MyBookingsPageState extends State<MyBookingsPage>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Booking #${booking.bookingId}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Booking #${booking.bookingId}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -462,6 +482,39 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                           color: Colors.grey[600],
                         ),
                       ),
+                      if (booking.needDriver) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.blue[200]!),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.drive_eta,
+                                size: 14,
+                                color: Colors.blue[900],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'With Driver',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue[900],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -559,7 +612,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                       ),
                     ),
                     child: const Text(
-                      'Cancel Booking',
+                      'Cancel',
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -635,6 +688,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       case 'pending':
         return Colors.orange;
       case 'cancelled':
+      case 'rejected':
         return Colors.red;
       case 'completed':
         return Colors.blue;

@@ -8,13 +8,12 @@ class User {
   final DateTime createdAt;
   final bool isActive;
   final String? profileImage;
-  
-  // New fields for license verification
+  final String? approvalStatus;
+  final String? rejectionReason; 
   final bool isLicenseVerified;
   final String? licenseNumber;
   final String? licenseImageUrl;
   final String? licenseVerificationStatus; // pending, approved, rejected
-  final DateTime? licenseSubmittedAt;
 
   User({
     required this.userId,
@@ -26,11 +25,12 @@ class User {
     required this.createdAt,
     this.isActive = true,
     this.profileImage,
+    this.approvalStatus,
+    this.rejectionReason,
     this.isLicenseVerified = false,
     this.licenseNumber,
     this.licenseImageUrl,
     this.licenseVerificationStatus,
-    this.licenseSubmittedAt,
   });
 
   // Factory constructor to create a User from JSON
@@ -47,13 +47,12 @@ class User {
           : DateTime.now(),
       isActive: json['is_active'] ?? true,
       profileImage: json['profile_image'],
+      approvalStatus: json['approval_status'], 
+      rejectionReason: json['rejection_reason'], 
       isLicenseVerified: json['is_license_verified'] ?? false,
       licenseNumber: json['license_number'],
       licenseImageUrl: json['license_image_url'],
       licenseVerificationStatus: json['license_verification_status'],
-      licenseSubmittedAt: json['license_submitted_at'] != null
-          ? DateTime.parse(json['license_submitted_at'])
-          : null,
     );
   }
 
@@ -69,11 +68,12 @@ class User {
       'created_at': createdAt.toIso8601String(),
       'is_active': isActive,
       'profile_image': profileImage,
+      'approval_status': approvalStatus, // Add this
+      'rejection_reason': rejectionReason, // Add this
       'is_license_verified': isLicenseVerified,
       'license_number': licenseNumber,
       'license_image_url': licenseImageUrl,
       'license_verification_status': licenseVerificationStatus,
-      'license_submitted_at': licenseSubmittedAt?.toIso8601String(),
     };
   }
 
@@ -99,7 +99,10 @@ class User {
 
   // Helper method to get user ID as String (useful for Firebase)
   String get userIdString => userId.toString();
-  
+  bool get isPending => approvalStatus?.toLowerCase() == 'pending';
+  bool get isApproved => approvalStatus?.toLowerCase() == 'approved';
+  bool get isRejected => approvalStatus?.toLowerCase() == 'rejected';
+
   // Check if user can book vehicles
   bool get canBookVehicles => isCustomer && isLicenseVerified;
   
