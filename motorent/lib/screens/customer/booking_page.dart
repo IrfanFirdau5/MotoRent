@@ -1,16 +1,8 @@
-// FILE: motorent/lib/screens/customer/booking_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
-
-// FILE: motorent/lib/screens/customer/booking_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
-
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../models/vehicle.dart';
 import '../../models/booking.dart';
-import '../../services/firebase_booking_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/firebase_booking_service.dart';
 import '../../services/auth_service.dart';
 import 'booking_confirmation_page.dart';
@@ -32,8 +24,6 @@ class BookingPage extends StatefulWidget {
 class _BookingPageState extends State<BookingPage> {
   final FirebaseBookingService _bookingService = FirebaseBookingService();
   final FirebaseBookingService _firebaseBookingService = FirebaseBookingService();
-  final AuthService _authService = AuthService();
-  
   final AuthService _authService = AuthService();
   
   DateTime _focusedDay = DateTime.now();
