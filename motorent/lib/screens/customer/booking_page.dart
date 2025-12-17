@@ -1,9 +1,14 @@
+// FILE: motorent/lib/screens/customer/booking_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../models/vehicle.dart';
 import '../../models/booking.dart';
 import '../../services/booking_service.dart';
+import '../../services/firebase_booking_service.dart';
+import '../../services/auth_service.dart';
 import 'booking_confirmation_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -22,6 +27,9 @@ class BookingPage extends StatefulWidget {
 
 class _BookingPageState extends State<BookingPage> {
   final BookingService _bookingService = BookingService();
+  final FirebaseBookingService _firebaseBookingService = FirebaseBookingService();
+  final AuthService _authService = AuthService();
+  
   DateTime _focusedDay = DateTime.now();
   DateTime? _startDate;
   DateTime? _endDate;
@@ -32,6 +40,10 @@ class _BookingPageState extends State<BookingPage> {
   // Driver hire option
   bool _needDriver = false;
   final double _driverPricePerDay = 50.0; // RM50 per day for driver
+  
+  // NEW: Location controllers for driver service
+  final TextEditingController _pickupLocationController = TextEditingController();
+  final TextEditingController _dropoffLocationController = TextEditingController();
 
   // Blocked dates (example: already booked dates)
   final List<DateTime> _blockedDates = [];
@@ -40,6 +52,13 @@ class _BookingPageState extends State<BookingPage> {
   void initState() {
     super.initState();
     _focusedDay = DateTime.now();
+  }
+
+  @override
+  void dispose() {
+    _pickupLocationController.dispose();
+    _dropoffLocationController.dispose();
+    super.dispose();
   }
 
   bool _isDayBlocked(DateTime day) {
@@ -104,6 +123,28 @@ class _BookingPageState extends State<BookingPage> {
       return;
     }
 
+    // Validate locations if driver is needed
+    if (_needDriver) {
+      if (_pickupLocationController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter pickup location'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      if (_dropoffLocationController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter drop-off location'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    }
+
     if (_startDate!.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -119,18 +160,29 @@ class _BookingPageState extends State<BookingPage> {
     });
 
     try {
-      final result = await _bookingService.mockCreateBooking(
+      // Get current user details
+      final currentUser = await _authService.getCurrentUser();
+      
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Create booking with Firebase
+      final result = await _firebaseBookingService.createBooking(
         userId: widget.userId,
-        vehicleId: widget.vehicle.vehicleId,
+        userName: currentUser.name,
+        userPhone: currentUser.phone,
+        userEmail: currentUser.email,
+        vehicleId: widget.vehicle.vehicleId.toString(),
+        vehicleName: widget.vehicle.fullName,
         ownerId: widget.vehicle.ownerId,
         startDate: _startDate!,
         endDate: _endDate!,
         totalPrice: _calculateTotalPrice(),
-        userName: 'John Doe',
-        vehicleName: widget.vehicle.fullName,
-        userPhone: '0123456789',
         needDriver: _needDriver,
         driverPrice: _needDriver ? _calculateDriverPrice() : null,
+        pickupLocation: _needDriver ? _pickupLocationController.text.trim() : null,
+        dropoffLocation: _needDriver ? _dropoffLocationController.text.trim() : null,
       );
 
       setState(() {
@@ -139,15 +191,24 @@ class _BookingPageState extends State<BookingPage> {
 
       if (result['success']) {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BookingConfirmationPage(
-              booking: result['booking'] as Booking,
-              vehicle: widget.vehicle,
+        
+        // Get the booking from Firestore
+        final bookingId = result['booking_id'];
+        final booking = await _firebaseBookingService.getBookingById(bookingId);
+        
+        if (booking != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BookingConfirmationPage(
+                booking: booking,
+                vehicle: widget.vehicle,
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          throw Exception('Failed to retrieve booking details');
+        }
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -431,6 +492,73 @@ class _BookingPageState extends State<BookingPage> {
                 ),
               ),
             ),
+
+            // NEW: Location fields when driver is needed
+            if (_needDriver) ...[
+              const SizedBox(height: 20),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Driver Service Details',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Pickup Location Field
+                    TextFormField(
+                      controller: _pickupLocationController,
+                      decoration: InputDecoration(
+                        labelText: 'Pickup Location *',
+                        hintText: 'Enter your pickup address',
+                        prefixIcon: const Icon(Icons.location_on),
+                        helperText: 'Where should the driver pick up the car?',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Dropoff Location Field
+                    TextFormField(
+                      controller: _dropoffLocationController,
+                      decoration: InputDecoration(
+                        labelText: 'Drop-off Location *',
+                        hintText: 'Enter your destination address',
+                        prefixIcon: const Icon(Icons.location_on_outlined),
+                        helperText: 'Where should the driver drop off the car?',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1E88E5),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 

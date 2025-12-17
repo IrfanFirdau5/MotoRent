@@ -1,5 +1,5 @@
 // FILE: motorent/lib/services/firebase_booking_service.dart
-// CREATE THIS NEW FILE
+// REPLACE THE ENTIRE FILE WITH THIS
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
@@ -24,6 +24,8 @@ class FirebaseBookingService {
     double? driverPrice,
     String? driverId,
     String? driverName,
+    String? pickupLocation,
+    String? dropoffLocation,
   }) async {
     try {
       // Check vehicle availability for the dates
@@ -52,13 +54,17 @@ class FirebaseBookingService {
         'start_date': Timestamp.fromDate(startDate),
         'end_date': Timestamp.fromDate(endDate),
         'total_price': totalPrice,
-        'booking_status': 'pending',
+        'booking_status': 'confirmed',
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
         'need_driver': needDriver,
         'driver_price': driverPrice,
         'driver_id': driverId,
         'driver_name': driverName,
+        'driver_request_status': needDriver ? 'pending' : null,
+        'driver_job_status': null,
+        'pickup_location': pickupLocation,
+        'dropoff_location': dropoffLocation,
       };
 
       final docRef = await _firestore.collection(_bookingsCollection).add(bookingData);

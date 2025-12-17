@@ -1,9 +1,13 @@
+// FILE: motorent/lib/screens/driver/driver_dashboard_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/user.dart';
 import '../../models/ride_request.dart';
 import '../../services/driver_service.dart';
+import '../../services/firebase_driver_service.dart';
 import 'driver_availability_page.dart';
 import 'driver_upcoming_jobs_page.dart';
 import 'driver_earnings_page.dart';
@@ -26,6 +30,7 @@ class DriverDashboardPage extends StatefulWidget {
 
 class _DriverDashboardPageState extends State<DriverDashboardPage> {
   final DriverService _driverService = DriverService();
+  final FirebaseDriverService _firebaseDriverService = FirebaseDriverService();
   final AuthService _authService = AuthService();
   
   bool _isAvailable = false;
@@ -56,6 +61,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
+      print('Error loading dashboard: $e');
       setState(() {
         _isLoading = false;
       });
@@ -100,7 +106,12 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
 
   Future<void> _respondToRequest(RideRequest request, bool accept) async {
     try {
-      await _driverService.respondToRequest(request.requestId, accept);
+      // Use Firebase service directly with proper parameters
+      await _firebaseDriverService.respondToRequest(
+        request.bookingId.toString(), 
+        widget.driver.userIdString,
+        accept,
+      );
       
       if (!mounted) return;
       
@@ -108,10 +119,11 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         SnackBar(
           content: Text(
             accept 
-                ? 'Ride request accepted!' 
+                ? 'Ride request accepted! Job added to your schedule.' 
                 : 'Ride request declined',
           ),
           backgroundColor: accept ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 3),
         ),
       );
       
@@ -123,6 +135,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         SnackBar(
           content: Text('Error: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -358,7 +371,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                         Expanded(
                           child: _buildStatCard(
                             'Earnings',
-                            'RM ${_stats['total_earnings']?.toStringAsFixed(2) ?? '0.00'}',
+                            'RM ${(_stats['total_earnings'] ?? 0.0).toStringAsFixed(2)}',
                             Icons.attach_money,
                             Colors.purple,
                           ),
