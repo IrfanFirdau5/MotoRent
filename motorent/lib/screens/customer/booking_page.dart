@@ -1,9 +1,13 @@
+// FILE: motorent/lib/screens/customer/booking_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../models/vehicle.dart';
 import '../../models/booking.dart';
-import '../../services/booking_service.dart';
+import '../../services/firebase_booking_service.dart';
+import '../../services/auth_service.dart';
 import 'booking_confirmation_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -21,25 +25,50 @@ class BookingPage extends StatefulWidget {
 }
 
 class _BookingPageState extends State<BookingPage> {
-  final BookingService _bookingService = BookingService();
+  final FirebaseBookingService _bookingService = FirebaseBookingService();
+  final AuthService _authService = AuthService();
+  
   DateTime _focusedDay = DateTime.now();
   DateTime? _startDate;
   DateTime? _endDate;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
   bool _isLoading = false;
+  bool _isCheckingAvailability = true;
   
   // Driver hire option
   bool _needDriver = false;
   final double _driverPricePerDay = 50.0; // RM50 per day for driver
 
-  // Blocked dates (example: already booked dates)
-  final List<DateTime> _blockedDates = [];
+  // Blocked dates (dates when vehicle is already booked)
+  List<DateTime> _blockedDates = [];
 
   @override
   void initState() {
     super.initState();
     _focusedDay = DateTime.now();
+    _loadBlockedDates();
+  }
+
+  Future<void> _loadBlockedDates() async {
+    setState(() {
+      _isCheckingAvailability = true;
+    });
+
+    try {
+      // For now, we'll implement a simple check
+      // In production, you'd fetch all existing bookings for this vehicle
+      // and mark those date ranges as blocked
+      
+      setState(() {
+        _isCheckingAvailability = false;
+      });
+    } catch (e) {
+      print('Error loading blocked dates: $e');
+      setState(() {
+        _isCheckingAvailability = false;
+      });
+    }
   }
 
   bool _isDayBlocked(DateTime day) {
@@ -119,16 +148,48 @@ class _BookingPageState extends State<BookingPage> {
     });
 
     try {
-      final result = await _bookingService.mockCreateBooking(
+      // Get current user details
+      final currentUser = await _authService.getCurrentUser();
+      
+      if (currentUser == null) {
+        throw Exception('User not found. Please login again.');
+      }
+
+      // Check availability before creating booking
+      final isAvailable = await _bookingService.checkAvailability(
+        vehicleId: widget.vehicle.vehicleId.toString(),
+        startDate: _startDate!,
+        endDate: _endDate!,
+      );
+
+      if (!isAvailable) {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sorry, this vehicle is not available for the selected dates'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Create booking in Firebase
+      final result = await _bookingService.createBooking(
         userId: widget.userId,
-        vehicleId: widget.vehicle.vehicleId,
+        userName: currentUser.name,
+        userPhone: currentUser.phone,
+        userEmail: currentUser.email,
+        vehicleId: widget.vehicle.vehicleId.toString(),
+        vehicleName: widget.vehicle.fullName,
         ownerId: widget.vehicle.ownerId,
         startDate: _startDate!,
         endDate: _endDate!,
         totalPrice: _calculateTotalPrice(),
-        userName: 'John Doe',
-        vehicleName: widget.vehicle.fullName,
-        userPhone: '0123456789',
         needDriver: _needDriver,
         driverPrice: _needDriver ? _calculateDriverPrice() : null,
       );
@@ -137,19 +198,37 @@ class _BookingPageState extends State<BookingPage> {
         _isLoading = false;
       });
 
+      if (!mounted) return;
+
       if (result['success']) {
-        if (!mounted) return;
+        // Create Booking object for confirmation page
+        final booking = Booking(
+          bookingId: result['booking_id'],
+          userId: widget.userId,
+          vehicleId: widget.vehicle.vehicleId.toString(),
+          ownerId: widget.vehicle.ownerId,
+          startDate: _startDate!,
+          endDate: _endDate!,
+          totalPrice: _calculateTotalPrice(),
+          bookingStatus: 'pending',
+          createdAt: DateTime.now(),
+          userName: currentUser.name,
+          vehicleName: widget.vehicle.fullName,
+          userPhone: currentUser.phone,
+          needDriver: _needDriver,
+          driverPrice: _needDriver ? _calculateDriverPrice() : null,
+        );
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => BookingConfirmationPage(
-              booking: result['booking'] as Booking,
+              booking: booking,
               vehicle: widget.vehicle,
             ),
           ),
         );
       } else {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
@@ -163,9 +242,10 @@ class _BookingPageState extends State<BookingPage> {
       });
 
       if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error creating booking: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -185,183 +265,37 @@ class _BookingPageState extends State<BookingPage> {
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Vehicle Info Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E88E5).withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!),
-                ),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.directions_car,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.vehicle.fullName,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'RM ${widget.vehicle.pricePerDay.toStringAsFixed(2)}/day',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF1E88E5),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Instructions
-            Padding(
-              padding: const EdgeInsets.all(20),
+      body: _isCheckingAvailability
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Select Rental Period',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                  // Vehicle Info Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E88E5).withOpacity(0.1),
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[300]!),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap to select start date, then tap again to select end date',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Calendar
-            TableCalendar(
-              firstDay: DateTime.now(),
-              lastDay: DateTime.now().add(const Duration(days: 365)),
-              focusedDay: _focusedDay,
-              calendarFormat: _calendarFormat,
-              rangeSelectionMode: _rangeSelectionMode,
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              selectedDayPredicate: (day) {
-                return isSameDay(_startDate, day);
-              },
-              rangeStartDay: _startDate,
-              rangeEndDay: _endDate,
-              onDaySelected: _onDaySelected,
-              onRangeSelected: _onRangeSelected,
-              onFormatChanged: (format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              },
-              onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
-              },
-              enabledDayPredicate: (day) {
-                return !day.isBefore(DateTime.now().subtract(const Duration(days: 1))) &&
-                    !_isDayBlocked(day);
-              },
-              calendarStyle: CalendarStyle(
-                todayDecoration: BoxDecoration(
-                  color: Colors.orange[300],
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: const BoxDecoration(
-                  color: Color(0xFF1E88E5),
-                  shape: BoxShape.circle,
-                ),
-                rangeStartDecoration: const BoxDecoration(
-                  color: Color(0xFF1E88E5),
-                  shape: BoxShape.circle,
-                ),
-                rangeEndDecoration: const BoxDecoration(
-                  color: Color(0xFF1E88E5),
-                  shape: BoxShape.circle,
-                ),
-                rangeHighlightColor: const Color(0xFF1E88E5).withOpacity(0.3),
-                disabledDecoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  shape: BoxShape.circle,
-                ),
-                outsideDaysVisible: false,
-              ),
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: true,
-                titleCentered: true,
-                formatButtonShowsNext: false,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Driver Option Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _needDriver ? const Color(0xFF1E88E5) : Colors.grey[300]!,
-                    width: _needDriver ? 2 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
+                    child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E88E5).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.drive_eta,
-                            color: Color(0xFF1E88E5),
-                            size: 28,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.directions_car,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 15),
@@ -369,251 +303,398 @@ class _BookingPageState extends State<BookingPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Need a Driver?',
-                                style: TextStyle(
-                                  fontSize: 16,
+                              Text(
+                                widget.vehicle.fullName,
+                                style: const TextStyle(
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 5),
                               Text(
-                                'RM ${_driverPricePerDay.toStringAsFixed(2)}/day',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _needDriver,
-                          onChanged: (value) {
-                            setState(() {
-                              _needDriver = value;
-                            });
-                          },
-                          activeColor: const Color(0xFF1E88E5),
-                        ),
-                      ],
-                    ),
-                    if (_needDriver) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: Colors.blue[900],
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'A professional driver will be assigned to you after booking confirmation.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue[900],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Selected Dates Info
-            if (_startDate != null || _endDate != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Start Date',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _startDate != null
-                                    ? DateFormat('dd MMM yyyy').format(_startDate!)
-                                    : 'Not selected',
+                                'RM ${widget.vehicle.pricePerDay.toStringAsFixed(2)}/day',
                                 style: const TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Icon(Icons.arrow_forward, color: Color(0xFF1E88E5)),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'End Date',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _endDate != null
-                                    ? DateFormat('dd MMM yyyy').format(_endDate!)
-                                    : 'Not selected',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      if (days > 0) ...[
-                        const Divider(height: 24),
-                        // Vehicle price
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Vehicle ($days day${days > 1 ? 's' : ''})',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              'RM ${vehiclePrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // Driver price (if selected)
-                        if (_needDriver) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Driver ($days day${days > 1 ? 's' : ''})',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                'RM ${driverPrice.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
+                                  color: Color(0xFF1E88E5),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Instructions
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Select Rental Period',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap to select start date, then tap again to select end date',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Calendar
+                  TableCalendar(
+                    firstDay: DateTime.now(),
+                    lastDay: DateTime.now().add(const Duration(days: 365)),
+                    focusedDay: _focusedDay,
+                    calendarFormat: _calendarFormat,
+                    rangeSelectionMode: _rangeSelectionMode,
+                    startingDayOfWeek: StartingDayOfWeek.monday,
+                    selectedDayPredicate: (day) {
+                      return isSameDay(_startDate, day);
+                    },
+                    rangeStartDay: _startDate,
+                    rangeEndDay: _endDate,
+                    onDaySelected: _onDaySelected,
+                    onRangeSelected: _onRangeSelected,
+                    onFormatChanged: (format) {
+                      setState(() {
+                        _calendarFormat = format;
+                      });
+                    },
+                    onPageChanged: (focusedDay) {
+                      _focusedDay = focusedDay;
+                    },
+                    enabledDayPredicate: (day) {
+                      return !day.isBefore(DateTime.now().subtract(const Duration(days: 1))) &&
+                          !_isDayBlocked(day);
+                    },
+                    calendarStyle: CalendarStyle(
+                      todayDecoration: BoxDecoration(
+                        color: Colors.orange[300],
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: const BoxDecoration(
+                        color: Color(0xFF1E88E5),
+                        shape: BoxShape.circle,
+                      ),
+                      rangeStartDecoration: const BoxDecoration(
+                        color: Color(0xFF1E88E5),
+                        shape: BoxShape.circle,
+                      ),
+                      rangeEndDecoration: const BoxDecoration(
+                        color: Color(0xFF1E88E5),
+                        shape: BoxShape.circle,
+                      ),
+                      rangeHighlightColor: const Color(0xFF1E88E5).withOpacity(0.3),
+                      disabledDecoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        shape: BoxShape.circle,
+                      ),
+                      outsideDaysVisible: false,
+                    ),
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: true,
+                      titleCentered: true,
+                      formatButtonShowsNext: false,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Driver Option Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _needDriver ? const Color(0xFF1E88E5) : Colors.grey[300]!,
+                          width: _needDriver ? 2 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
-                        const Divider(height: 20),
-                        // Total
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Total',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E88E5).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.drive_eta,
+                                  color: Color(0xFF1E88E5),
+                                  size: 28,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'RM ${totalPrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E88E5),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Need a Driver?',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'RM ${_driverPricePerDay.toStringAsFixed(2)}/day',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _needDriver,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _needDriver = value;
+                                  });
+                                },
+                                activeColor: const Color(0xFF1E88E5),
+                              ),
+                            ],
+                          ),
+                          if (_needDriver) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: Colors.blue[900],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'A professional driver will be assigned to you after booking confirmation.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[900],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 30),
-
-            // Book Button
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: (_startDate != null && _endDate != null && !_isLoading)
-                      ? _handleBooking
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E88E5),
-                    disabledBackgroundColor: Colors.grey[300],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                        ],
+                      ),
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          days > 0
-                              ? 'Confirm Booking - RM ${totalPrice.toStringAsFixed(2)}'
-                              : 'Select Dates to Continue',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+
+                  const SizedBox(height: 20),
+
+                  // Selected Dates Info
+                  if (_startDate != null || _endDate != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Start Date',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _startDate != null
+                                          ? DateFormat('dd MMM yyyy').format(_startDate!)
+                                          : 'Not selected',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Icon(Icons.arrow_forward, color: Color(0xFF1E88E5)),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'End Date',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _endDate != null
+                                          ? DateFormat('dd MMM yyyy').format(_endDate!)
+                                          : 'Not selected',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            if (days > 0) ...[
+                              const Divider(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Vehicle ($days day${days > 1 ? 's' : ''})',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'RM ${vehiclePrice.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_needDriver) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Driver ($days day${days > 1 ? 's' : ''})',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      'RM ${driverPrice.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const Divider(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Total',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'RM ${totalPrice.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1E88E5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 30),
+
+                  // Book Button
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: (_startDate != null && _endDate != null && !_isLoading)
+                            ? _handleBooking
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E88E5),
+                          disabledBackgroundColor: Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                days > 0
+                                    ? 'Confirm Booking - RM ${totalPrice.toStringAsFixed(2)}'
+                                    : 'Select Dates to Continue',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,14 +1,18 @@
+// FILE: motorent/lib/screens/customer/vehicle_listing_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../../models/vehicle.dart';
 import '../../models/user.dart';
 import '../../services/vehicle_service.dart';
+import '../../services/auth_service.dart';
 import 'vehicle_detail_page.dart';
 import '../../widgets/customer_drawer.dart';
 
 class VehicleListingPage extends StatefulWidget {
-  final User? user; // Make user optional for backward compatibility
+  final User? user;
 
   const VehicleListingPage({Key? key, this.user}) : super(key: key);
 
@@ -18,6 +22,9 @@ class VehicleListingPage extends StatefulWidget {
 
 class _VehicleListingPageState extends State<VehicleListingPage> {
   final VehicleService _vehicleService = VehicleService();
+  final AuthService _authService = AuthService();
+  
+  User? _currentUser;
   List<Vehicle> _vehicles = [];
   List<Vehicle> _filteredVehicles = [];
   bool _isLoading = true;
@@ -27,14 +34,33 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   String _selectedBrand = 'All';
   double _minPrice = 0;
   double _maxPrice = 500;
-  String _availabilityFilter = 'All';
+  String _availabilityFilter = 'available'; // Default to showing only available
   
-  final List<String> _brands = ['All', 'Toyota', 'Honda', 'Perodua', 'Proton', 'Nissan'];
+  final List<String> _brands = ['All'];
   
   @override
   void initState() {
     super.initState();
+    _initializeUser();
     _loadVehicles();
+  }
+
+  Future<void> _initializeUser() async {
+    // Use passed user or fetch current user
+    if (widget.user != null) {
+      setState(() {
+        _currentUser = widget.user;
+      });
+    } else {
+      try {
+        final user = await _authService.getCurrentUser();
+        setState(() {
+          _currentUser = user;
+        });
+      } catch (e) {
+        print('Error loading user: $e');
+      }
+    }
   }
 
   Future<void> _loadVehicles() async {
@@ -44,13 +70,33 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     });
 
     try {
-      final vehicles = await _vehicleService.fetchMockVehicles();
+      print('🔍 Loading vehicles from Firebase...');
+      
+      // Fetch available vehicles from Firebase
+      final vehicles = await _vehicleService.fetchAvailableVehicles();
+      
+      print('✅ Loaded ${vehicles.length} vehicles');
+      
+      // Extract unique brands
+      final brandSet = <String>{'All'};
+      for (var vehicle in vehicles) {
+        if (vehicle.brand.isNotEmpty) {
+          brandSet.add(vehicle.brand);
+        }
+      }
+      
       setState(() {
         _vehicles = vehicles;
         _filteredVehicles = vehicles;
+        _brands.clear();
+        _brands.addAll(brandSet.toList()..sort());
         _isLoading = false;
       });
+      
+      // Apply default filter (available only)
+      _applyFilters();
     } catch (e) {
+      print('❌ Error loading vehicles: $e');
       setState(() {
         _errorMessage = 'Failed to load vehicles: $e';
         _isLoading = false;
@@ -69,7 +115,10 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         return brandMatch && priceMatch && availabilityMatch;
       }).toList();
     });
-    Navigator.pop(context);
+    
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   void _resetFilters() {
@@ -77,10 +126,13 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
       _selectedBrand = 'All';
       _minPrice = 0;
       _maxPrice = 500;
-      _availabilityFilter = 'All';
-      _filteredVehicles = _vehicles;
+      _availabilityFilter = 'available';
+      _filteredVehicles = _vehicles.where((v) => v.isAvailable).toList();
     });
-    Navigator.pop(context);
+    
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   void _showFilterDialog() {
@@ -245,8 +297,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Add drawer if user is provided
-      drawer: widget.user != null ? CustomerDrawer(user: widget.user!) : null,
+      drawer: _currentUser != null ? CustomerDrawer(user: _currentUser!) : null,
       appBar: AppBar(
         title: const Text(
           'Browse Vehicles',
@@ -255,15 +306,13 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
         elevation: 0,
-        // Only show menu icon if user is provided
-        automaticallyImplyLeading: widget.user != null,
+        automaticallyImplyLeading: _currentUser != null,
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
             tooltip: 'Filter',
           ),
-          // Remove profile button - it's now in the sidebar
         ],
       ),
       body: _isLoading
@@ -284,10 +333,13 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -348,7 +400,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
             MaterialPageRoute(
               builder: (context) => VehicleDetailPage(
                 vehicle: vehicle,
-                userId: widget.user?.userId ?? '1',
+                userId: _currentUser?.userIdString ?? '1',
               ),
             ),
           );

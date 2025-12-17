@@ -1,187 +1,161 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// FILE: motorent/lib/services/vehicle_service.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import '../models/vehicle.dart';
+import 'firebase_vehicle_service.dart';
 
 class VehicleService {
-  // TODO: Replace with your actual backend API URL
-  static const String baseUrl = 'https://your-api-url.com/api';
-  
-  // Fetch all vehicles
-  Future<List<Vehicle>> fetchVehicles() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/vehicles'),
-        headers: {'Content-Type': 'application/json'},
-      );
+  final FirebaseVehicleService _firebaseService = FirebaseVehicleService();
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Vehicle.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load vehicles');
-      }
-    } catch (e) {
-      throw Exception('Error fetching vehicles: $e');
-    }
+  // Fetch all available vehicles (delegates to Firebase)
+  Future<List<Vehicle>> fetchAvailableVehicles() async {
+    return await _firebaseService.fetchAvailableVehicles();
   }
 
-  // Fetch vehicles with filters
+  // Fetch owner's vehicles (delegates to Firebase)
+  Future<List<Vehicle>> fetchOwnerVehicles(String ownerId) async {
+    return await _firebaseService.fetchOwnerVehicles(ownerId);
+  }
+
+  // Fetch vehicle by ID (delegates to Firebase)
+  Future<Vehicle?> fetchVehicleById(String vehicleId) async {
+    return await _firebaseService.fetchVehicleById(vehicleId);
+  }
+
+  // Fetch filtered vehicles (delegates to Firebase)
   Future<List<Vehicle>> fetchFilteredVehicles({
     String? brand,
     double? minPrice,
     double? maxPrice,
     String? availabilityStatus,
   }) async {
-    try {
-      Map<String, String> queryParams = {};
-      
-      if (brand != null && brand.isNotEmpty) {
-        queryParams['brand'] = brand;
-      }
-      if (minPrice != null) {
-        queryParams['min_price'] = minPrice.toString();
-      }
-      if (maxPrice != null) {
-        queryParams['max_price'] = maxPrice.toString();
-      }
-      if (availabilityStatus != null && availabilityStatus.isNotEmpty) {
-        queryParams['availability_status'] = availabilityStatus;
-      }
-
-      final uri = Uri.parse('$baseUrl/vehicles').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
-
-      final response = await http.get(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Vehicle.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load filtered vehicles');
-      }
-    } catch (e) {
-      throw Exception('Error fetching filtered vehicles: $e');
-    }
+    return await _firebaseService.fetchFilteredVehicles(
+      brand: brand,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      availabilityStatus: availabilityStatus,
+    );
   }
 
-  // Fetch single vehicle details
-  Future<Vehicle> fetchVehicleById(dynamic vehicleId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/vehicles/$vehicleId'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return Vehicle.fromJson(json.decode(response.body));
-      } else {
-        throw Exception('Failed to load vehicle details');
-      }
-    } catch (e) {
-      throw Exception('Error fetching vehicle: $e');
-    }
+  // Add a new vehicle (delegates to Firebase)
+  Future<Map<String, dynamic>> addVehicle({
+    required String ownerId,
+    required String ownerName,
+    required String brand,
+    required String model,
+    required String licensePlate,
+    required double pricePerDay,
+    required String description,
+    String? imageUrl,
+  }) async {
+    return await _firebaseService.addVehicle(
+      ownerId: ownerId,
+      ownerName: ownerName,
+      brand: brand,
+      model: model,
+      licensePlate: licensePlate,
+      pricePerDay: pricePerDay,
+      description: description,
+      imageUrl: imageUrl,
+    );
   }
 
-  // Mock data for testing (remove when backend is ready)
+  // Update vehicle details (delegates to Firebase)
+  Future<bool> updateVehicle({
+    required String vehicleId,
+    String? brand,
+    String? model,
+    String? licensePlate,
+    double? pricePerDay,
+    String? description,
+    String? imageUrl,
+  }) async {
+    return await _firebaseService.updateVehicle(
+      vehicleId: vehicleId,
+      brand: brand,
+      model: model,
+      licensePlate: licensePlate,
+      pricePerDay: pricePerDay,
+      description: description,
+      imageUrl: imageUrl,
+    );
+  }
+
+  // Update vehicle availability status (delegates to Firebase)
+  Future<bool> updateAvailabilityStatus(String vehicleId, String status) async {
+    return await _firebaseService.updateAvailabilityStatus(vehicleId, status);
+  }
+
+  // Delete vehicle (delegates to Firebase)
+  Future<bool> deleteVehicle(String vehicleId) async {
+    return await _firebaseService.deleteVehicle(vehicleId);
+  }
+
+  // Get vehicle statistics (delegates to Firebase)
+  Future<Map<String, dynamic>> getVehicleStatistics(String vehicleId) async {
+    return await _firebaseService.getVehicleStatistics(vehicleId);
+  }
+
+  // Stream owner's vehicles for real-time updates (delegates to Firebase)
+  Stream<List<Vehicle>> streamOwnerVehicles(String ownerId) {
+    return _firebaseService.streamOwnerVehicles(ownerId);
+  }
+
+  // MOCK DATA METHODS (for backward compatibility during transition)
+  // These can be removed once all components use Firebase
+
   Future<List<Vehicle>> fetchMockVehicles() async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    return [
-      Vehicle(
-        vehicleId: 1,
-        ownerId: 'Ahmad',
-        brand: 'Toyota',
-        model: 'Vios',
-        licensePlate: 'QA1234A',
-        pricePerDay: 120.00,
-        description: 'Comfortable sedan perfect for city driving and short trips.',
-        availabilityStatus: 'available',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Toyota+Vios',
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        ownerName: 'Ahmad Rentals',
-        rating: 4.5,
-        reviewCount: 23,
-      ),
-      Vehicle(
-        vehicleId: 2,
-        ownerId: 'Ahmad',
-        brand: 'Honda',
-        model: 'Civic',
-        licensePlate: 'QB5678B',
-        pricePerDay: 150.00,
-        description: 'Sporty and fuel-efficient. Great for long distance travel.',
-        availabilityStatus: 'available',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Honda+Civic',
-        createdAt: DateTime.now().subtract(const Duration(days: 20)),
-        ownerName: 'Sarawak Motors',
-        rating: 4.8,
-        reviewCount: 45,
-      ),
-      Vehicle(
-        vehicleId: 3,
-        ownerId: 'Ahmad',
-        brand: 'Perodua',
-        model: 'Myvi',
-        licensePlate: 'QC9012C',
-        pricePerDay: 80.00,
-        description: 'Affordable and reliable. Perfect for budget travelers.',
-        availabilityStatus: 'available',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Perodua+Myvi',
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        ownerName: 'Budget Cars',
-        rating: 4.2,
-        reviewCount: 67,
-      ),
-      Vehicle(
-        vehicleId: 4,
-        ownerId: 'Ahmad',
-        brand: 'Proton',
-        model: 'X70',
-        licensePlate: 'QD3456D',
-        pricePerDay: 180.00,
-        description: 'Spacious SUV ideal for family trips and group travel.',
-        availabilityStatus: 'available',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Proton+X70',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        ownerName: 'Family Rentals',
-        rating: 4.6,
-        reviewCount: 34,
-      ),
-      Vehicle(
-        vehicleId: 5,
-        ownerId: 'Ahmad',
-        brand: 'Toyota',
-        model: 'Hilux',
-        licensePlate: 'QE7890E',
-        pricePerDay: 220.00,
-        description: 'Powerful pickup truck suitable for rough terrain.',
-        availabilityStatus: 'unavailable',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Toyota+Hilux',
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        ownerName: 'Adventure Rides',
-        rating: 4.9,
-        reviewCount: 12,
-      ),
-      Vehicle(
-        vehicleId: 6,
-        ownerId: 'Ahmad',
-        brand: 'Nissan',
-        model: 'Almera',
-        licensePlate: 'QF2468F',
-        pricePerDay: 110.00,
-        description: 'Modern sedan with excellent fuel economy.',
-        availabilityStatus: 'available',
-        imageUrl: 'https://via.placeholder.com/300x200?text=Nissan+Almera',
-        createdAt: DateTime.now().subtract(const Duration(days: 25)),
-        ownerName: 'City Rentals',
-        rating: 4.3,
-        reviewCount: 28,
-      ),
-    ];
+    // For backward compatibility, delegate to Firebase
+    return await fetchAvailableVehicles();
+  }
+
+  Future<Map<String, dynamic>> mockAddVehicle({
+    required String ownerId,
+    required String ownerName,
+    required String brand,
+    required String model,
+    required String licensePlate,
+    required double pricePerDay,
+    required String description,
+    String? imageUrl,
+  }) async {
+    return await addVehicle(
+      ownerId: ownerId,
+      ownerName: ownerName,
+      brand: brand,
+      model: model,
+      licensePlate: licensePlate,
+      pricePerDay: pricePerDay,
+      description: description,
+      imageUrl: imageUrl,
+    );
+  }
+
+  Future<bool> mockUpdateVehicle({
+    required String vehicleId,
+    String? brand,
+    String? model,
+    String? licensePlate,
+    double? pricePerDay,
+    String? description,
+    String? imageUrl,
+  }) async {
+    return await updateVehicle(
+      vehicleId: vehicleId,
+      brand: brand,
+      model: model,
+      licensePlate: licensePlate,
+      pricePerDay: pricePerDay,
+      description: description,
+      imageUrl: imageUrl,
+    );
+  }
+
+  Future<bool> mockDeleteVehicle(String vehicleId) async {
+    return await deleteVehicle(vehicleId);
+  }
+
+  Future<bool> mockUpdateAvailability(String vehicleId, String status) async {
+    return await updateAvailabilityStatus(vehicleId, status);
   }
 }
