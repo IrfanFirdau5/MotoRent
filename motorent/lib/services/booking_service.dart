@@ -1,236 +1,236 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../models/booking.dart';
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+// import '../models/booking.dart';
 
-class BookingService {
-  // TODO: Replace with your actual backend API URL
-  static const String baseUrl = 'https://your-api-url.com/api';
+// class BookingService {
+//   // TODO: Replace with your actual backend API URL
+//   static const String baseUrl = 'https://your-api-url.com/api';
 
-  // Create a new booking
-  Future<Map<String, dynamic>> createBooking({
-    required dynamic userId,
-    required dynamic vehicleId,
-    required DateTime startDate,
-    required DateTime endDate,
-    required double totalPrice,
-    bool needDriver = false,
-    double? driverPrice,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/bookings'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'user_id': userId,
-          'vehicle_id': vehicleId,
-          'start_date': startDate.toIso8601String(),
-          'end_date': endDate.toIso8601String(),
-          'total_price': totalPrice,
-          'booking_status': 'pending',
-          'need_driver': needDriver,
-          'driver_price': driverPrice,
-        }),
-      );
+//   // Create a new booking
+//   Future<Map<String, dynamic>> createBooking({
+//     required dynamic userId,
+//     required dynamic vehicleId,
+//     required DateTime startDate,
+//     required DateTime endDate,
+//     required double totalPrice,
+//     bool needDriver = false,
+//     double? driverPrice,
+//   }) async {
+//     try {
+//       final response = await http.post(
+//         Uri.parse('$baseUrl/bookings'),
+//         headers: {'Content-Type': 'application/json'},
+//         body: json.encode({
+//           'user_id': userId,
+//           'vehicle_id': vehicleId,
+//           'start_date': startDate.toIso8601String(),
+//           'end_date': endDate.toIso8601String(),
+//           'total_price': totalPrice,
+//           'booking_status': 'pending',
+//           'need_driver': needDriver,
+//           'driver_price': driverPrice,
+//         }),
+//       );
 
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'booking': Booking.fromJson(data['booking']),
-          'message': 'Booking created successfully',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to create booking',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-      };
-    }
-  }
+//       if (response.statusCode == 201) {
+//         final data = json.decode(response.body);
+//         return {
+//           'success': true,
+//           'booking': Booking.fromJson(data['booking']),
+//           'message': 'Booking created successfully',
+//         };
+//       } else {
+//         return {
+//           'success': false,
+//           'message': 'Failed to create booking',
+//         };
+//       }
+//     } catch (e) {
+//       return {
+//         'success': false,
+//         'message': 'Network error: $e',
+//       };
+//     }
+//   }
 
-  // Fetch user's bookings
-  Future<List<Booking>> fetchUserBookings(dynamic userId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/bookings/user/$userId'),
-        headers: {'Content-Type': 'application/json'},
-      );
+//   // Fetch user's bookings
+//   Future<List<Booking>> fetchUserBookings(dynamic userId) async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('$baseUrl/bookings/user/$userId'),
+//         headers: {'Content-Type': 'application/json'},
+//       );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Booking.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load bookings');
-      }
-    } catch (e) {
-      throw Exception('Error fetching bookings: $e');
-    }
-  }
+//       if (response.statusCode == 200) {
+//         final List<dynamic> data = json.decode(response.body);
+//         return data.map((json) => Booking.fromJson(json)).toList();
+//       } else {
+//         throw Exception('Failed to load bookings');
+//       }
+//     } catch (e) {
+//       throw Exception('Error fetching bookings: $e');
+//     }
+//   }
 
-  // Cancel a booking
-  Future<Map<String, dynamic>> cancelBooking(dynamic bookingId) async {
-    try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
-        headers: {'Content-Type': 'application/json'},
-      );
+//   // Cancel a booking
+//   Future<Map<String, dynamic>> cancelBooking(dynamic bookingId) async {
+//     try {
+//       final response = await http.patch(
+//         Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
+//         headers: {'Content-Type': 'application/json'},
+//       );
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'message': 'Booking cancelled successfully',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to cancel booking',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-      };
-    }
-  }
+//       if (response.statusCode == 200) {
+//         return {
+//           'success': true,
+//           'message': 'Booking cancelled successfully',
+//         };
+//       } else {
+//         return {
+//           'success': false,
+//           'message': 'Failed to cancel booking',
+//         };
+//       }
+//     } catch (e) {
+//       return {
+//         'success': false,
+//         'message': 'Network error: $e',
+//       };
+//     }
+//   }
 
-  // Check vehicle availability for dates
-  Future<bool> checkAvailability({
-    required dynamic vehicleId,
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/vehicles/$vehicleId/availability'
-            '?start_date=${startDate.toIso8601String()}'
-            '&end_date=${endDate.toIso8601String()}'),
-        headers: {'Content-Type': 'application/json'},
-      );
+//   // Check vehicle availability for dates
+//   Future<bool> checkAvailability({
+//     required dynamic vehicleId,
+//     required DateTime startDate,
+//     required DateTime endDate,
+//   }) async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('$baseUrl/vehicles/$vehicleId/availability'
+//             '?start_date=${startDate.toIso8601String()}'
+//             '&end_date=${endDate.toIso8601String()}'),
+//         headers: {'Content-Type': 'application/json'},
+//       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['available'] ?? false;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-  }
+//       if (response.statusCode == 200) {
+//         final data = json.decode(response.body);
+//         return data['available'] ?? false;
+//       } else {
+//         return false;
+//       }
+//     } catch (e) {
+//       return false;
+//     }
+//   }
 
-  // Mock create booking for testing
-  Future<Map<String, dynamic>> mockCreateBooking({
-    required dynamic userId,
-    required dynamic vehicleId,
-    required dynamic ownerId,
-    required DateTime startDate,
-    required DateTime endDate,
-    required double totalPrice,
-    String? userName,
-    String? vehicleName,
-    String? userPhone,
-    bool needDriver = false,
-    double? driverPrice,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 2));
+//   // Mock create booking for testing
+//   Future<Map<String, dynamic>> mockCreateBooking({
+//     required dynamic userId,
+//     required dynamic vehicleId,
+//     required dynamic ownerId,
+//     required DateTime startDate,
+//     required DateTime endDate,
+//     required double totalPrice,
+//     String? userName,
+//     String? vehicleName,
+//     String? userPhone,
+//     bool needDriver = false,
+//     double? driverPrice,
+//   }) async {
+//     // Simulate network delay
+//     await Future.delayed(const Duration(seconds: 2));
 
-    final newBooking = Booking(
-      bookingId: DateTime.now().millisecondsSinceEpoch,
-      userId: userId,
-      vehicleId: vehicleId,
-      ownerId: ownerId,
-      startDate: startDate,
-      endDate: endDate,
-      totalPrice: totalPrice,
-      bookingStatus: 'confirmed',
-      createdAt: DateTime.now(),
-      userName: userName,
-      vehicleName: vehicleName,
-      userPhone: userPhone,
-      needDriver: needDriver,
-      driverPrice: driverPrice,
-    );
+//     final newBooking = Booking(
+//       bookingId: DateTime.now().millisecondsSinceEpoch,
+//       userId: userId,
+//       vehicleId: vehicleId,
+//       ownerId: ownerId,
+//       startDate: startDate,
+//       endDate: endDate,
+//       totalPrice: totalPrice,
+//       bookingStatus: 'confirmed',
+//       createdAt: DateTime.now(),
+//       userName: userName,
+//       vehicleName: vehicleName,
+//       userPhone: userPhone,
+//       needDriver: needDriver,
+//       driverPrice: driverPrice,
+//     );
 
-    return {
-      'success': true,
-      'booking': newBooking,
-      'message': needDriver 
-          ? 'Booking created successfully with driver service!' 
-          : 'Booking created successfully',
-    };
-  }
+//     return {
+//       'success': true,
+//       'booking': newBooking,
+//       'message': needDriver 
+//           ? 'Booking created successfully with driver service!' 
+//           : 'Booking created successfully',
+//     };
+//   }
 
-  // Mock fetch user bookings
-  Future<List<Booking>> mockFetchUserBookings(dynamic userId) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+//   // Mock fetch user bookings
+//   Future<List<Booking>> mockFetchUserBookings(dynamic userId) async {
+//     // Simulate network delay
+//     await Future.delayed(const Duration(seconds: 1));
 
-    return [
-      Booking(
-        bookingId: 1001,
-        userId: userId,
-        vehicleId: '1',
-        ownerId : '1',
-        startDate: DateTime.now().add(const Duration(days: 2)),
-        endDate: DateTime.now().add(const Duration(days: 5)),
-        totalPrice: 360.00,
-        bookingStatus: 'confirmed',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        userName: 'John Doe',
-        vehicleName: 'Toyota Vios',
-        userPhone: '0123456789',
-        needDriver: false,
-      ),
-      Booking(
-        bookingId: 1002,
-        userId: userId,
-        vehicleId: '3',
-        ownerId : 'Ahmad',
-        startDate: DateTime.now().subtract(const Duration(days: 10)),
-        endDate: DateTime.now().subtract(const Duration(days: 7)),
-        totalPrice: 390.00,
-        bookingStatus: 'completed',
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        userName: 'John Doe',
-        vehicleName: 'Perodua Myvi',
-        userPhone: '0123456789',
-        needDriver: true,
-        driverPrice: 150.00,
-      ),
-      Booking(
-        bookingId: 1003,
-        userId: userId,
-        vehicleId: '2',
-        ownerId : 'Ahmad',
-        startDate: DateTime.now().add(const Duration(days: 10)),
-        endDate: DateTime.now().add(const Duration(days: 12)),
-        totalPrice: 450.00,
-        bookingStatus: 'pending',
-        createdAt: DateTime.now(),
-        userName: 'John Doe',
-        vehicleName: 'Honda Civic',
-        userPhone: '0123456789',
-        needDriver: false,
-      ),
-    ];
-  }
+//     return [
+//       Booking(
+//         bookingId: 1001,
+//         userId: userId,
+//         vehicleId: '1',
+//         ownerId : '1',
+//         startDate: DateTime.now().add(const Duration(days: 2)),
+//         endDate: DateTime.now().add(const Duration(days: 5)),
+//         totalPrice: 360.00,
+//         bookingStatus: 'confirmed',
+//         createdAt: DateTime.now().subtract(const Duration(days: 1)),
+//         userName: 'John Doe',
+//         vehicleName: 'Toyota Vios',
+//         userPhone: '0123456789',
+//         needDriver: false,
+//       ),
+//       Booking(
+//         bookingId: 1002,
+//         userId: userId,
+//         vehicleId: '3',
+//         ownerId : 'Ahmad',
+//         startDate: DateTime.now().subtract(const Duration(days: 10)),
+//         endDate: DateTime.now().subtract(const Duration(days: 7)),
+//         totalPrice: 390.00,
+//         bookingStatus: 'completed',
+//         createdAt: DateTime.now().subtract(const Duration(days: 15)),
+//         userName: 'John Doe',
+//         vehicleName: 'Perodua Myvi',
+//         userPhone: '0123456789',
+//         needDriver: true,
+//         driverPrice: 150.00,
+//       ),
+//       Booking(
+//         bookingId: 1003,
+//         userId: userId,
+//         vehicleId: '2',
+//         ownerId : 'Ahmad',
+//         startDate: DateTime.now().add(const Duration(days: 10)),
+//         endDate: DateTime.now().add(const Duration(days: 12)),
+//         totalPrice: 450.00,
+//         bookingStatus: 'pending',
+//         createdAt: DateTime.now(),
+//         userName: 'John Doe',
+//         vehicleName: 'Honda Civic',
+//         userPhone: '0123456789',
+//         needDriver: false,
+//       ),
+//     ];
+//   }
 
-  // Mock cancel booking
-  Future<Map<String, dynamic>> mockCancelBooking(dynamic bookingId) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
+//   // Mock cancel booking
+//   Future<Map<String, dynamic>> mockCancelBooking(dynamic bookingId) async {
+//     // Simulate network delay
+//     await Future.delayed(const Duration(seconds: 1));
 
-    return {
-      'success': true,
-      'message': 'Booking cancelled successfully',
-    };
-  }
-}
+//     return {
+//       'success': true,
+//       'message': 'Booking cancelled successfully',
+//     };
+//   }
+// }
