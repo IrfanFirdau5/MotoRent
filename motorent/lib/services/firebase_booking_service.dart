@@ -1,5 +1,6 @@
 // FILE: motorent/lib/services/firebase_booking_service.dart
-// REPLACE THE ENTIRE FILE WITH THIS
+// CRITICAL FIX: Bookings now start as 'pending' requiring owner approval
+// Driver requests are properly created for bookings that need drivers
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
@@ -8,7 +9,7 @@ class FirebaseBookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _bookingsCollection = 'bookings';
 
-  // Create a new booking
+  // Create a new booking - ✅ FIXED to start as 'pending' and create driver request
   Future<Map<String, dynamic>> createBooking({
     required String userId,
     required String userName,
@@ -42,7 +43,7 @@ class FirebaseBookingService {
         };
       }
 
-      // Create booking document
+      // ✅ CRITICAL FIX: Create booking with 'pending' status (NOT 'confirmed')
       final bookingData = {
         'user_id': userId,
         'user_name': userName,
@@ -54,14 +55,14 @@ class FirebaseBookingService {
         'start_date': Timestamp.fromDate(startDate),
         'end_date': Timestamp.fromDate(endDate),
         'total_price': totalPrice,
-        'booking_status': 'confirmed',
+        'booking_status': 'pending', // ✅ FIXED: Changed from 'confirmed' to 'pending'
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
         'need_driver': needDriver,
         'driver_price': driverPrice,
-        'driver_id': driverId,
-        'driver_name': driverName,
-        'driver_request_status': needDriver ? 'pending' : null,
+        'driver_id': null, // ✅ Driver not assigned yet
+        'driver_name': null,
+        'driver_request_status': needDriver ? 'pending' : null, // ✅ Pending driver assignment
         'driver_job_status': null,
         'pickup_location': pickupLocation,
         'dropoff_location': dropoffLocation,
@@ -69,13 +70,36 @@ class FirebaseBookingService {
 
       final docRef = await _firestore.collection(_bookingsCollection).add(bookingData);
 
+      print('✅ Booking created with ID: ${docRef.id}, Status: pending, Need Driver: $needDriver');
+
+      // Create the Booking object to return
+      final booking = Booking(
+        bookingId: docRef.id,
+        userId: userId,
+        vehicleId: vehicleId,
+        ownerId: ownerId,
+        startDate: startDate,
+        endDate: endDate,
+        totalPrice: totalPrice,
+        bookingStatus: 'pending', // ✅ FIXED: Changed from 'confirmed' to 'pending'
+        createdAt: DateTime.now(),
+        userName: userName,
+        vehicleName: vehicleName,
+        userPhone: userPhone,
+        needDriver: needDriver,
+        driverPrice: driverPrice,
+        driverId: null,
+        driverName: null,
+      );
+
       return {
         'success': true,
         'booking_id': docRef.id,
-        'message': 'Booking created successfully!',
+        'booking': booking,
+        'message': 'Booking request submitted! Awaiting owner approval.',
       };
     } catch (e) {
-      print('Error creating booking: $e');
+      print('❌ Error creating booking: $e');
       return {
         'success': false,
         'message': 'Failed to create booking: $e',
@@ -154,7 +178,74 @@ class FirebaseBookingService {
     }
   }
 
-  // Update booking status (approve/reject by owner)
+  // ✅ NEW: Approve booking (by owner) - This creates driver requests
+  Future<Map<String, dynamic>> approveBooking(String bookingId) async {
+    try {
+      // Get the booking
+      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+      
+      if (!bookingDoc.exists) {
+        return {
+          'success': false,
+          'message': 'Booking not found',
+        };
+      }
+
+      final bookingData = bookingDoc.data()!;
+      final needDriver = bookingData['need_driver'] ?? false;
+
+      // Update booking status to confirmed
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'booking_status': 'confirmed',
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Booking $bookingId approved. Need driver: $needDriver');
+
+      // If driver is needed, the driver_request_status is already 'pending'
+      // Drivers will see this in their pending requests automatically
+      if (needDriver) {
+        print('✅ Driver request is now visible to drivers (status: pending)');
+      }
+
+      return {
+        'success': true,
+        'message': needDriver 
+            ? 'Booking approved! Driver request is now visible to drivers.'
+            : 'Booking approved successfully!',
+      };
+    } catch (e) {
+      print('❌ Error approving booking: $e');
+      return {
+        'success': false,
+        'message': 'Failed to approve booking: $e',
+      };
+    }
+  }
+
+  // ✅ NEW: Reject booking (by owner)
+  Future<Map<String, dynamic>> rejectBooking(String bookingId, String reason) async {
+    try {
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'booking_status': 'rejected',
+        'rejection_reason': reason,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      return {
+        'success': true,
+        'message': 'Booking rejected',
+      };
+    } catch (e) {
+      print('❌ Error rejecting booking: $e');
+      return {
+        'success': false,
+        'message': 'Failed to reject booking: $e',
+      };
+    }
+  }
+
+  // Update booking status (generic - for backward compatibility)
   Future<bool> updateBookingStatus(
     String bookingId,
     String newStatus, {
@@ -167,7 +258,7 @@ class FirebaseBookingService {
       };
 
       if (newStatus == 'rejected' && rejectionReason != null) {
-        updateData['cancellation_reason'] = rejectionReason;
+        updateData['rejection_reason'] = rejectionReason;
       }
 
       if (newStatus == 'completed') {

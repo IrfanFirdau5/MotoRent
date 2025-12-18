@@ -1,5 +1,5 @@
 // FILE: motorent/lib/screens/customer/vehicle_listing_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
+// ✅ FIXED: Max price filter increased to RM 10,000
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -30,11 +30,11 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   
-  // Filter variables
+  // Filter variables - ✅ FIX: Increased max price to 10,000
   String _selectedBrand = 'All';
   double _minPrice = 0;
-  double _maxPrice = 500;
-  String _availabilityFilter = 'available'; // Default to showing only available
+  double _maxPrice = 10000; // ✅ Changed to 10,000
+  String _availabilityFilter = 'available';
   
   final List<String> _brands = ['All'];
   
@@ -46,7 +46,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   }
 
   Future<void> _initializeUser() async {
-    // Use passed user or fetch current user
     if (widget.user != null) {
       setState(() {
         _currentUser = widget.user;
@@ -72,12 +71,10 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     try {
       print('🔍 Loading vehicles from Firebase...');
       
-      // Fetch available vehicles from Firebase
       final vehicles = await _vehicleService.fetchAvailableVehicles();
       
       print('✅ Loaded ${vehicles.length} vehicles');
       
-      // Extract unique brands
       final brandSet = <String>{'All'};
       for (var vehicle in vehicles) {
         if (vehicle.brand.isNotEmpty) {
@@ -93,7 +90,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         _isLoading = false;
       });
       
-      // Apply default filter (available only)
       _applyFilters();
     } catch (e) {
       print('❌ Error loading vehicles: $e');
@@ -125,7 +121,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     setState(() {
       _selectedBrand = 'All';
       _minPrice = 0;
-      _maxPrice = 500;
+      _maxPrice = 10000; // ✅ Reset to 10,000
       _availabilityFilter = 'available';
       _filteredVehicles = _vehicles.where((v) => v.isAvailable).toList();
     });
@@ -209,11 +205,12 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 10),
+                  // ✅ FIX: Updated RangeSlider max to 10,000
                   RangeSlider(
                     values: RangeValues(_minPrice, _maxPrice),
                     min: 0,
-                    max: 500,
-                    divisions: 10,
+                    max: 10000, // ✅ Changed to 10,000
+                    divisions: 100, // ✅ Changed to 100 for better granularity
                     labels: RangeLabels(
                       'RM ${_minPrice.round()}',
                       'RM ${_maxPrice.round()}',
