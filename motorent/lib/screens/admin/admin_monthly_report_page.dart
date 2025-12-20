@@ -282,8 +282,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
               ['Resolved', '${issues['resolved']}'],
               ['Pending', '${issues['pending']}'],
               ['Resolution Rate', '${issues['resolution_rate']}%'],
-              ['Avg Vehicle Rating', '${ratings['average_vehicle_rating']} ⭐'],
-              ['Avg Driver Rating', '${ratings['average_driver_rating']} ⭐'],
+              ['Avg Vehicle Rating', '${ratings['average_vehicle_rating'].toStringAsFixed(1)} ⭐'],
+              ['Avg Driver Rating', '${ratings['average_driver_rating'].toStringAsFixed(1)} ⭐'],
               ['Total Reviews', '${ratings['total_reviews']}'],
             ]),
             pw.SizedBox(height: 30),
@@ -373,16 +373,21 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   List<List<String>> _buildTopVehiclesRows() {
-    final topVehicles = _reportData['top_vehicles'] as List;
+    final topVehicles = (_reportData['top_vehicles'] as List?) ?? [];
     final List<List<String>> rows = [];
     
+    if (topVehicles.isEmpty) {
+      rows.add(['1', 'No data available', '0', 'RM 0.00']);
+      return rows;
+    }
+    
     for (int i = 0; i < topVehicles.length; i++) {
-      final vehicle = topVehicles[i];
+      final vehicle = topVehicles[i] as Map<String, dynamic>;
       rows.add([
         '${i + 1}',
-        vehicle['name'].toString(),
-        '${vehicle['bookings']}',
-        'RM ${NumberFormat('#,##0.00').format(vehicle['revenue'])}',
+        vehicle['name']?.toString() ?? 'Unknown',
+        '${vehicle['bookings'] ?? 0}',
+        'RM ${NumberFormat('#,##0.00').format(vehicle['revenue'] ?? 0.0)}',
       ]);
     }
     
@@ -390,16 +395,21 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   List<List<String>> _buildTopOwnersRows() {
-    final topOwners = _reportData['top_owners'] as List;
+    final topOwners = (_reportData['top_owners'] as List?) ?? [];
     final List<List<String>> rows = [];
     
+    if (topOwners.isEmpty) {
+      rows.add(['1', 'No data available', '0', 'RM 0.00']);
+      return rows;
+    }
+    
     for (int i = 0; i < topOwners.length; i++) {
-      final owner = topOwners[i];
+      final owner = topOwners[i] as Map<String, dynamic>;
       rows.add([
         '${i + 1}',
-        owner['name'].toString(),
-        '${owner['vehicles']}',
-        'RM ${NumberFormat('#,##0.00').format(owner['revenue'])}',
+        owner['name']?.toString() ?? 'Unknown',
+        '${owner['vehicles'] ?? 0}',
+        'RM ${NumberFormat('#,##0.00').format(owner['revenue'] ?? 0.0)}',
       ]);
     }
     
@@ -496,6 +506,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
       ),
     );
   }
+  // CONTINUATION OF admin_monthly_report_page.dart
+  // Add this after the PDF generation methods
 
   @override
   Widget build(BuildContext context) {
@@ -703,10 +715,10 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildFinancialCards() {
-    final revenue = _reportData['revenue'];
-    final expenses = _reportData['expenses'];
-    final profit = _reportData['profit'];
-    final profitMargin = _reportData['profit_margin'];
+    final revenue = _reportData['revenue'] ?? {};
+    final expenses = _reportData['expenses'] ?? {};
+    final profit = _reportData['profit'] ?? 0.0;
+    final profitMargin = _reportData['profit_margin'] ?? 0.0;
 
     return Column(
       children: [
@@ -715,17 +727,17 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Total Revenue',
-                'RM ${NumberFormat('#,##0.00').format(revenue['total'])}',
+                'RM ${NumberFormat('#,##0.00').format(revenue['total'] ?? 0.0)}',
                 Icons.trending_up,
                 Colors.green,
-                subtitle: '+${revenue['growth_percentage']}% vs last month',
+                subtitle: '+${revenue['growth_percentage'] ?? 0}% vs last month',
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
                 'Total Expenses',
-                'RM ${NumberFormat('#,##0.00').format(expenses['total'])}',
+                'RM ${NumberFormat('#,##0.00').format(expenses['total'] ?? 0.0)}',
                 Icons.trending_down,
                 Colors.orange,
               ),
@@ -751,8 +763,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildRevenueBreakdown() {
-    final revenue = _reportData['revenue'];
-    final expenses = _reportData['expenses'];
+    final revenue = _reportData['revenue'] ?? {};
+    final expenses = _reportData['expenses'] ?? {};
 
     return Card(
       elevation: 2,
@@ -774,15 +786,15 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             const SizedBox(height: 16),
             _buildBreakdownItem(
               'Vehicle Rentals',
-              revenue['vehicle_rentals'],
-              revenue['total'],
+              (revenue['vehicle_rentals'] ?? 0.0).toDouble(),
+              (revenue['total'] ?? 1.0).toDouble(),
               Colors.blue,
             ),
             const SizedBox(height: 8),
             _buildBreakdownItem(
               'Driver Services',
-              revenue['driver_services'],
-              revenue['total'],
+              (revenue['driver_services'] ?? 0.0).toDouble(),
+              (revenue['total'] ?? 1.0).toDouble(),
               Colors.green,
             ),
             const Divider(height: 32),
@@ -796,29 +808,29 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             const SizedBox(height: 16),
             _buildBreakdownItem(
               'Maintenance',
-              expenses['maintenance'],
-              expenses['total'],
+              (expenses['maintenance'] ?? 0.0).toDouble(),
+              (expenses['total'] ?? 1.0).toDouble(),
               Colors.orange,
             ),
             const SizedBox(height: 8),
             _buildBreakdownItem(
               'Insurance',
-              expenses['insurance'],
-              expenses['total'],
+              (expenses['insurance'] ?? 0.0).toDouble(),
+              (expenses['total'] ?? 1.0).toDouble(),
               Colors.red,
             ),
             const SizedBox(height: 8),
             _buildBreakdownItem(
               'Platform Fees',
-              expenses['platform_fees'],
-              expenses['total'],
+              (expenses['platform_fees'] ?? 0.0).toDouble(),
+              (expenses['total'] ?? 1.0).toDouble(),
               Colors.purple,
             ),
             const SizedBox(height: 8),
             _buildBreakdownItem(
               'Marketing',
-              expenses['marketing'],
-              expenses['total'],
+              (expenses['marketing'] ?? 0.0).toDouble(),
+              (expenses['total'] ?? 1.0).toDouble(),
               Colors.teal,
             ),
           ],
@@ -828,7 +840,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildBreakdownItem(String label, double amount, double total, Color color) {
-    final percentage = (amount / total) * 100;
+    final percentage = total > 0 ? (amount / total) * 100 : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -882,8 +894,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildUserStats() {
-    final users = _reportData['users'];
-    final byType = users['by_type'];
+    final users = _reportData['users'] ?? {};
+    final byType = users['by_type'] ?? {};
 
     return Column(
       children: [
@@ -892,7 +904,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'New Users',
-                '${users['new_registrations']}',
+                '${users['new_registrations'] ?? 0}',
                 Icons.person_add,
                 Colors.green,
               ),
@@ -901,7 +913,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Total Users',
-                '${users['total_users']}',
+                '${users['total_users'] ?? 0}',
                 Icons.people,
                 Colors.blue,
               ),
@@ -918,13 +930,13 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoRow('Active Users', '${users['active_users']}', Icons.check_circle),
+                _buildInfoRow('Active Users', '${users['active_users'] ?? 0}', Icons.check_circle),
                 const Divider(height: 24),
-                _buildInfoRow('New Customers', '${byType['customers']}', Icons.person),
+                _buildInfoRow('New Customers', '${byType['customers'] ?? 0}', Icons.person),
                 const SizedBox(height: 8),
-                _buildInfoRow('New Owners', '${byType['owners']}', Icons.business),
+                _buildInfoRow('New Owners', '${byType['owners'] ?? 0}', Icons.business),
                 const SizedBox(height: 8),
-                _buildInfoRow('New Drivers', '${byType['drivers']}', Icons.drive_eta),
+                _buildInfoRow('New Drivers', '${byType['drivers'] ?? 0}', Icons.drive_eta),
               ],
             ),
           ),
@@ -934,7 +946,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildVehicleStats() {
-    final vehicles = _reportData['vehicles'];
+    final vehicles = _reportData['vehicles'] ?? {};
 
     return Column(
       children: [
@@ -943,7 +955,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Total Vehicles',
-                '${vehicles['total_listed']}',
+                '${vehicles['total_listed'] ?? 0}',
                 Icons.directions_car,
                 Colors.blue,
               ),
@@ -952,7 +964,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'New Listings',
-                '${vehicles['new_listings']}',
+                '${vehicles['new_listings'] ?? 0}',
                 Icons.add_circle,
                 Colors.green,
               ),
@@ -969,9 +981,9 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoRow('Active Listings', '${vehicles['active_listings']}', Icons.check_circle),
+                _buildInfoRow('Active Listings', '${vehicles['active_listings'] ?? 0}', Icons.check_circle),
                 const SizedBox(height: 12),
-                _buildInfoRow('Pending Approval', '${vehicles['pending_approval']}', Icons.pending),
+                _buildInfoRow('Pending Approval', '${vehicles['pending_approval'] ?? 0}', Icons.pending),
               ],
             ),
           ),
@@ -981,7 +993,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildBookingStats() {
-    final bookings = _reportData['bookings'];
+    final bookings = _reportData['bookings'] ?? {};
 
     return Column(
       children: [
@@ -990,7 +1002,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Total Bookings',
-                '${bookings['total']}',
+                '${bookings['total'] ?? 0}',
                 Icons.book_online,
                 Colors.blue,
               ),
@@ -999,7 +1011,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Completed',
-                '${bookings['completed']}',
+                '${bookings['completed'] ?? 0}',
                 Icons.check_circle,
                 Colors.green,
               ),
@@ -1016,11 +1028,11 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoRow('Ongoing', '${bookings['ongoing']}', Icons.pending_actions),
+                _buildInfoRow('Ongoing', '${bookings['ongoing'] ?? 0}', Icons.pending_actions),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Cancelled',
-                  '${bookings['cancelled']} (${bookings['cancellation_rate']}%)',
+                  '${bookings['cancelled'] ?? 0} (${bookings['cancellation_rate'] ?? '0'}%)',
                   Icons.cancel,
                 ),
               ],
@@ -1032,8 +1044,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildIssuesStats() {
-    final issues = _reportData['issues'];
-    final ratings = _reportData['ratings'];
+    final issues = _reportData['issues'] ?? {};
+    final ratings = _reportData['ratings'] ?? {};
 
     return Column(
       children: [
@@ -1042,7 +1054,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Total Reports',
-                '${issues['total_reports']}',
+                '${issues['total_reports'] ?? 0}',
                 Icons.report_problem,
                 Colors.orange,
               ),
@@ -1051,7 +1063,7 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             Expanded(
               child: _buildStatCard(
                 'Resolved',
-                '${issues['resolved']}',
+                '${issues['resolved'] ?? 0}',
                 Icons.check_circle,
                 Colors.green,
               ),
@@ -1068,27 +1080,27 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoRow('Pending Issues', '${issues['pending']}', Icons.pending),
+                _buildInfoRow('Pending Issues', '${issues['pending'] ?? 0}', Icons.pending),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Resolution Rate',
-                  '${issues['resolution_rate']}%',
+                  '${issues['resolution_rate'] ?? '0'}%',
                   Icons.trending_up,
                 ),
                 const Divider(height: 24),
                 _buildInfoRow(
                   'Avg Vehicle Rating',
-                  '${ratings['average_vehicle_rating']} ⭐',
+                  '${(ratings['average_vehicle_rating'] ?? 0.0).toStringAsFixed(1)} ⭐',
                   Icons.star,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Avg Driver Rating',
-                  '${ratings['average_driver_rating']} ⭐',
+                  '${(ratings['average_driver_rating'] ?? 0.0).toStringAsFixed(1)} ⭐',
                   Icons.drive_eta,
                 ),
                 const SizedBox(height: 12),
-                _buildInfoRow('Total Reviews', '${ratings['total_reviews']}', Icons.rate_review),
+                _buildInfoRow('Total Reviews', '${ratings['total_reviews'] ?? 0}', Icons.rate_review),
               ],
             ),
           ),
@@ -1098,8 +1110,8 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
   }
 
   Widget _buildTopPerformers() {
-    final topVehicles = _reportData['top_vehicles'] as List;
-    final topOwners = _reportData['top_owners'] as List;
+    final topVehicles = (_reportData['top_vehicles'] as List?) ?? [];
+    final topOwners = (_reportData['top_owners'] as List?) ?? [];
 
     return Column(
       children: [
@@ -1127,70 +1139,81 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ...topVehicles.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final vehicle = entry.value;
-                  return Column(
-                    children: [
-                      if (index > 0) const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: index == 0
-                                  ? Colors.amber
-                                  : index == 1
-                                      ? Colors.grey[400]
-                                      : Colors.orange[300],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                if (topVehicles.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No vehicle data available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  ...topVehicles.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final vehicle = entry.value as Map<String, dynamic>;
+                    return Column(
+                      children: [
+                        if (index > 0) const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: index == 0
+                                    ? Colors.amber
+                                    : index == 1
+                                        ? Colors.grey[400]
+                                        : Colors.orange[300],
+                                shape: BoxShape.circle,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  vehicle['name'],
+                              child: Center(
+                                child: Text(
+                                  '${index + 1}',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  '${vehicle['bookings']} bookings',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    vehicle['name']?.toString() ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  Text(
+                                    '${vehicle['bookings'] ?? 0} bookings',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text(
-                            'RM ${NumberFormat('#,##0').format(vehicle['revenue'])}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E88E5),
+                            Text(
+                              'RM ${NumberFormat('#,##0').format(vehicle['revenue'] ?? 0.0)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E88E5),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                }).toList(),
+                          ],
+                        ),
+                      ],
+                    );
+                  }).toList(),
               ],
             ),
           ),
@@ -1220,70 +1243,81 @@ class _AdminMonthlyReportPageState extends State<AdminMonthlyReportPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ...topOwners.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final owner = entry.value;
-                  return Column(
-                    children: [
-                      if (index > 0) const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: index == 0
-                                  ? Colors.amber
-                                  : index == 1
-                                      ? Colors.grey[400]
-                                      : Colors.orange[300],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                if (topOwners.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No owner data available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  ...topOwners.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final owner = entry.value as Map<String, dynamic>;
+                    return Column(
+                      children: [
+                        if (index > 0) const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: index == 0
+                                    ? Colors.amber
+                                    : index == 1
+                                        ? Colors.grey[400]
+                                        : Colors.orange[300],
+                                shape: BoxShape.circle,
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  owner['name'],
+                              child: Center(
+                                child: Text(
+                                  '${index + 1}',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  '${owner['vehicles']} vehicles',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    owner['name']?.toString() ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  Text(
+                                    '${owner['vehicles'] ?? 0} vehicles',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text(
-                            'RM ${NumberFormat('#,##0').format(owner['revenue'])}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E88E5),
+                            Text(
+                              'RM ${NumberFormat('#,##0').format(owner['revenue'] ?? 0.0)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E88E5),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                }).toList(),
+                          ],
+                        ),
+                      ],
+                    );
+                  }).toList(),
               ],
             ),
           ),

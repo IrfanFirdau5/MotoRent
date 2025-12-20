@@ -393,6 +393,83 @@ class FirebaseAdminService {
 
       double avgRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
 
+      // Calculate top vehicles
+      final vehicleRevenueMap = <String, Map<String, dynamic>>{};
+      for (var doc in completedBookings.docs) {
+        final data = doc.data();
+        final vehicleId = data['vehicle_id'] as String;
+        final vehicleName = data['vehicle_name'] as String;
+        final price = (data['total_price'] as num).toDouble();
+        
+        if (vehicleRevenueMap.containsKey(vehicleId)) {
+          vehicleRevenueMap[vehicleId]!['revenue'] = 
+              (vehicleRevenueMap[vehicleId]!['revenue'] as double) + price;
+          vehicleRevenueMap[vehicleId]!['bookings'] = 
+              (vehicleRevenueMap[vehicleId]!['bookings'] as int) + 1;
+        } else {
+          vehicleRevenueMap[vehicleId] = {
+            'name': vehicleName,
+            'revenue': price,
+            'bookings': 1,
+          };
+        }
+      }
+      
+      final topVehicles = vehicleRevenueMap.entries
+          .map((e) => {
+                'name': e.value['name'],
+                'revenue': e.value['revenue'],
+                'bookings': e.value['bookings'],
+              })
+          .toList()
+        ..sort((a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+      
+      // Calculate top owners
+      final ownerRevenueMap = <String, Map<String, dynamic>>{};
+      for (var doc in completedBookings.docs) {
+        final data = doc.data();
+        final ownerId = data['owner_id'] as String;
+        final price = (data['total_price'] as num).toDouble();
+        
+        // Get owner name
+        String ownerName = 'Unknown Owner';
+        try {
+          final ownerDoc = await _firestore.collection('users').doc(ownerId).get();
+          if (ownerDoc.exists) {
+            ownerName = ownerDoc.data()!['name'] as String;
+          }
+        } catch (e) {
+          // Skip if owner not found
+        }
+        
+        if (ownerRevenueMap.containsKey(ownerId)) {
+          ownerRevenueMap[ownerId]!['revenue'] = 
+              (ownerRevenueMap[ownerId]!['revenue'] as double) + price;
+        } else {
+          // Count vehicles for this owner
+          final vehiclesCount = await _firestore
+              .collection('vehicles')
+              .where('owner_id', isEqualTo: ownerId)
+              .where('is_deleted', isEqualTo: false)
+              .get();
+          
+          ownerRevenueMap[ownerId] = {
+            'name': ownerName,
+            'revenue': price,
+            'vehicles': vehiclesCount.docs.length,
+          };
+        }
+      }
+      
+      final topOwners = ownerRevenueMap.entries
+          .map((e) => {
+                'name': e.value['name'],
+                'revenue': e.value['revenue'],
+                'vehicles': e.value['vehicles'],
+              })
+          .toList()
+        ..sort((a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+
       return {
         'month': month,
         'year': year,
@@ -454,6 +531,8 @@ class FirebaseAdminService {
           'average_driver_rating': avgRating, // Calculate separately if needed
           'total_reviews': reviewCount,
         },
+        'top_vehicles': topVehicles.take(5).toList(),
+        'top_owners': topOwners.take(5).toList(),
       };
     } catch (e) {
       print('Error getting monthly report: $e');
