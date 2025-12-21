@@ -1,11 +1,15 @@
+// FILE: motorent/lib/screens/customer/submit_review_page.dart
+// ✅ FIXED: Properly integrates with Firebase and handles booking ID types
+
 import 'package:flutter/material.dart';
 import '../../models/vehicle.dart';
 import '../../services/review_service.dart';
+import '../../services/auth_service.dart';
 
 class SubmitReviewPage extends StatefulWidget {
   final Vehicle vehicle;
-  final int bookingId;
-  final int userId;
+  final String bookingId; // ✅ Changed to String for Firebase
+  final String userId;
 
   const SubmitReviewPage({
     Key? key,
@@ -20,9 +24,31 @@ class SubmitReviewPage extends StatefulWidget {
 
 class _SubmitReviewPageState extends State<SubmitReviewPage> {
   final ReviewService _reviewService = ReviewService();
+  final AuthService _authService = AuthService();
   final TextEditingController _commentController = TextEditingController();
   int _rating = 0;
   bool _isSubmitting = false;
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      setState(() {
+        _userName = user?.name ?? 'Unknown User';
+      });
+    } catch (e) {
+      print('Error loading user name: $e');
+      setState(() {
+        _userName = 'Unknown User';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -51,49 +77,79 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
       return;
     }
 
+    if (_commentController.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comment must be at least 10 characters'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      print('📝 Submitting review:');
+      print('   Booking ID: ${widget.bookingId}');
+      print('   User ID: ${widget.userId}');
+      print('   Vehicle ID: ${widget.vehicle.vehicleId}');
+      print('   Rating: $_rating');
       
-      // When backend is ready, use this:
-      // final success = await _reviewService.submitReview(
-      //   bookingId: widget.bookingId,
-      //   userId: widget.userId,
-      //   vehicleId: widget.vehicle.vehicleId,
-      //   rating: _rating,
-      //   comment: _commentController.text.trim(),
-      // );
+      // ✅ Submit review to Firebase
+      final result = await _reviewService.submitReview(
+        bookingId: widget.bookingId, // ✅ Now String
+        userId: widget.userId,
+        vehicleId: widget.vehicle.vehicleId.toString(),
+        rating: _rating.toDouble(),
+        comment: _commentController.text.trim(),
+        userName: _userName,
+      );
 
       setState(() {
         _isSubmitting = false;
       });
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (result['success']) {
+        print('✅ Review submitted successfully');
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review submitted successfully!'),
+          SnackBar(
+            content: Text(result['message']),
             backgroundColor: Colors.green,
           ),
         );
+        
         Navigator.pop(context, true); // Return true to indicate success
-      }
-    } catch (e) {
-      setState(() {
-        _isSubmitting = false;
-      });
-
-      if (mounted) {
+      } else {
+        print('❌ Review submission failed: ${result['message']}');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit review: $e'),
+            content: Text(result['message']),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } catch (e) {
+      print('❌ Error submitting review: $e');
+      
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit review: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -268,6 +324,7 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
               ),

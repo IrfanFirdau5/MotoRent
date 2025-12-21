@@ -1,6 +1,9 @@
+// FILE: motorent/lib/models/review.dart
+// ✅ FIXED: Changed bookingId to String for Firebase compatibility
+
 class Review {
   final dynamic reviewId; // Can be int or String (Firestore document ID)
-  final String bookingId;
+  final String bookingId; // ✅ Changed to String for Firebase
   final String userId; // Changed to String for Firebase UID
   final String vehicleId;
   final String userName;
@@ -26,15 +29,17 @@ class Review {
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
       reviewId: json['review_id'] ?? '',
-      bookingId: json['booking_id'] ?? 0,
+      bookingId: json['booking_id']?.toString() ?? '', // ✅ Ensure String
       userId: json['user_id']?.toString() ?? '',
-      vehicleId: json['vehicle_id'] ?? 0,
+      vehicleId: json['vehicle_id']?.toString() ?? '',
       userName: json['user_name'] ?? '',
       userProfileImage: json['user_profile_image'],
       rating: json['rating'] ?? 0,
       comment: json['comment'] ?? '',
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? (json['created_at'] is String 
+              ? DateTime.parse(json['created_at'])
+              : DateTime.now())
           : DateTime.now(),
       vehicleName: json['vehicle_name'],
     );
