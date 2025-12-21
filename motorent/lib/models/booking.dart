@@ -1,3 +1,6 @@
+// FILE: lib/models/booking.dart
+// FIXED VERSION - Handles both String and int types
+
 class Booking {
   final dynamic bookingId;
   final String userId;
@@ -38,9 +41,9 @@ class Booking {
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
       bookingId: json['booking_id'] ?? 0,
-      userId: json['user_id'] ?? 0,
-      vehicleId: json['vehicle_id'] ?? 0,
-      ownerId: json['owner_id'] ?? 0,
+      userId: json['user_id']?.toString() ?? '0',
+      vehicleId: json['vehicle_id']?.toString() ?? '0',
+      ownerId: json['owner_id']?.toString() ?? '0',
       startDate: json['start_date'] != null
           ? DateTime.parse(json['start_date'])
           : DateTime.now(),
@@ -48,19 +51,21 @@ class Booking {
           ? DateTime.parse(json['end_date'])
           : DateTime.now(),
       totalPrice: (json['total_price'] ?? 0).toDouble(),
-      bookingStatus: json['booking_status'] ?? 'pending',
+      bookingStatus: json['booking_status']?.toString() ?? 'pending',
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
-      userName: json['user_name'],
-      vehicleName: json['vehicle_name'],
-      userPhone: json['user_phone'],
+      userName: json['user_name']?.toString(),
+      vehicleName: json['vehicle_name']?.toString(),
+      userPhone: json['user_phone']?.toString(),
       needDriver: json['need_driver'] ?? false,
       driverPrice: json['driver_price'] != null 
           ? (json['driver_price'] as num).toDouble() 
           : null,
-      driverId: json['driver_id'],
-      driverName: json['driver_name'],
+      driverId: json['driver_id'] != null 
+          ? (json['driver_id'] is int ? json['driver_id'] : int.tryParse(json['driver_id'].toString()))
+          : null,
+      driverName: json['driver_name']?.toString(),
     );
   }
 
@@ -69,6 +74,7 @@ class Booking {
       'booking_id': bookingId,
       'user_id': userId,
       'vehicle_id': vehicleId,
+      'owner_id': ownerId,
       'start_date': startDate.toIso8601String(),
       'end_date': endDate.toIso8601String(),
       'total_price': totalPrice,
