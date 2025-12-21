@@ -1,6 +1,3 @@
-// FILE: lib/screens/owner/owner_dashboard_page.dart
-// COMPLETE VERSION WITH SIDEBAR
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'add_vehicle_page.dart';
@@ -9,13 +6,13 @@ import 'owner_bookings_page.dart';
 import 'revenue_overview_page.dart';
 import 'manage_company_drivers_page.dart';
 import 'owner_report_page.dart';
+import 'owner_profile_page.dart';
 import '/services/firebase_booking_service.dart';
 import '/services/firebase_vehicle_service.dart';
 import '/models/vehicle.dart';
 import '/models/user.dart';
 import '../debug_everything_page.dart';
 import '../login_page.dart';
-import '../customer/user_profile_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:intl/intl.dart';
@@ -367,7 +364,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                       if (userData['created_at'] is Timestamp) {
                         userData['created_at'] = (userData['created_at'] as Timestamp).toDate().toIso8601String();
                       }
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => UserProfilePage(user: User.fromJson(userData))));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerProfilePage(user: User.fromJson(userData))));
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
