@@ -157,73 +157,7 @@ class FirebaseDriverService {
   // Fetch pending ride requests for driver - WITH DEBUG LOGGING
   Future<List<RideRequest>> fetchPendingRequests(String driverId) async {
     try {
-      print('');
-      print('🔍 ===== FETCHING DRIVER REQUESTS =====');
-      print('   Driver ID: $driverId');
-      print('   Current Time: ${DateTime.now()}');
-      
-      // Step 1: Check ALL bookings with need_driver = true
-      print('');
-      print('📋 Step 1: Checking ALL bookings with need_driver = true...');
-      final allDriverBookings = await _firestore
-          .collection(_bookingsCollection)
-          .where('need_driver', isEqualTo: true)
-          .get();
-      
-      print('   ✅ Found ${allDriverBookings.docs.length} total bookings with driver needed');
-      
-      if (allDriverBookings.docs.isEmpty) {
-        print('   ⚠️  NO bookings with need_driver = true found!');
-        print('   Check: Did customer toggle "Need Driver" when booking?');
-        print('');
-        return [];
-      }
-      
-      // Show details of each booking
-      for (var doc in allDriverBookings.docs) {
-        final data = doc.data();
-        print('');
-        print('   📄 Booking ID: ${doc.id}');
-        print('      Customer: ${data['user_name'] ?? "N/A"}');
-        print('      Vehicle: ${data['vehicle_name'] ?? "N/A"}');
-        print('      booking_status: "${data['booking_status']}"');
-        print('      driver_request_status: "${data['driver_request_status']}"');
-        print('      need_driver: ${data['need_driver']}');
-        print('      pickup_location: ${data['pickup_location'] ?? "N/A"}');
-        print('      dropoff_location: ${data['dropoff_location'] ?? "N/A"}');
-        
-        // Check each condition
-        bool needDriverOK = data['need_driver'] == true;
-        bool statusOK = data['driver_request_status'] == 'pending';
-        bool bookingOK = data['booking_status'] == 'confirmed';
-        
-        print('      ✓ Conditions:');
-        print('        - need_driver = true: ${needDriverOK ? "✅" : "❌"}');
-        print('        - driver_request_status = "pending": ${statusOK ? "✅" : "❌"}');
-        print('        - booking_status = "confirmed": ${bookingOK ? "✅" : "❌"}');
-        
-        if (needDriverOK && statusOK && bookingOK) {
-          print('      ✅ THIS BOOKING SHOULD APPEAR!');
-        } else {
-          print('      ❌ This booking will NOT appear');
-          if (!bookingOK) {
-            print('         Problem: booking_status is "${data['booking_status']}" (needs to be "confirmed")');
-          }
-          if (!statusOK) {
-            print('         Problem: driver_request_status is "${data['driver_request_status']}" (needs to be "pending")');
-          }
-        }
-      }
-      
-      // Step 2: Run the actual query
-      print('');
-      print('📋 Step 2: Running driver query with ALL conditions...');
-      print('   Query conditions:');
-      print('   - need_driver = true');
-      print('   - driver_request_status = "pending"');
-      print('   - booking_status = "confirmed"');
-      print('   - orderBy created_at DESC');
-      print('   - limit 10');
+      print('🔍 Fetching pending requests for driver: $driverId');
       
       final querySnapshot = await _firestore
           .collection(_bookingsCollection)
@@ -234,38 +168,17 @@ class FirebaseDriverService {
           .limit(10)
           .get();
 
-      print('');
-      print('   Query Result: ${querySnapshot.docs.length} bookings');
+      print('✅ Found ${querySnapshot.docs.length} pending requests');
       
-      if (querySnapshot.docs.isEmpty) {
-        print('');
-        print('❌ NO RESULTS FROM QUERY!');
-        print('');
-        print('💡 Common Causes:');
-        print('   1. booking_status is not "confirmed" (owner needs to approve)');
-        print('   2. driver_request_status is not "pending"');
-        print('   3. Firestore composite index not created');
-        print('');
-        print('🔧 Solutions:');
-        print('   1. Check Firestore Console - verify fields above');
-        print('   2. If you see an index error, click the link to create it');
-        print('   3. Make sure owner clicked "Approve" button');
-        print('');
-      } else {
-        print('');
-        print('✅ SUCCESS! Found ${querySnapshot.docs.length} pending requests');
-      }
-      
-      // Convert to RideRequest objects
       final requests = querySnapshot.docs.map((doc) {
         final data = doc.data();
         
-        print('   ✓ Request: ${data['user_name']} - ${data['vehicle_name']}');
+        print('   ✓ Booking ID: ${doc.id}'); // ✅ Should show the real Firestore ID
         
         return RideRequest(
-          requestId: int.tryParse(doc.id) ?? 0,
-          driverId: int.tryParse(driverId) ?? 0,
-          bookingId: int.tryParse(doc.id) ?? 0,
+          requestId: '', // ✅ Empty string
+          driverId: driverId, // ✅ String
+          bookingId: doc.id, // ✅ CRITICAL: Firestore document ID
           customerName: data['user_name'] ?? '',
           customerPhone: data['user_phone'] ?? '',
           vehicleName: data['vehicle_name'] ?? '',
@@ -276,44 +189,9 @@ class FirebaseDriverService {
         );
       }).toList();
       
-      print('');
-      print('✅ Returning ${requests.length} pending requests to dashboard');
-      print('🔍 ===== END FETCH =====');
-      print('');
-      
       return requests;
     } catch (e) {
-      print('');
-      print('❌ ERROR fetching pending requests: $e');
-      print('   Error Type: ${e.runtimeType}');
-      
-      if (e.toString().contains('index')) {
-        print('');
-        print('🚨 FIRESTORE INDEX REQUIRED!');
-        print('');
-        print('The error message above should contain a link like:');
-        print('https://console.firebase.google.com/...');
-        print('');
-        print('👉 Click that link to create the index');
-        print('👉 Wait 2-5 minutes for it to build');
-        print('👉 Restart the app');
-        print('');
-      }
-      
-      if (e.toString().contains('permission')) {
-        print('');
-        print('🚨 PERMISSION DENIED!');
-        print('');
-        print('Check your Firestore security rules.');
-        print('Drivers need permission to read bookings with:');
-        print('- need_driver = true');
-        print('- driver_request_status = "pending"');
-        print('');
-      }
-      
-      print('🔍 ===== END ERROR =====');
-      print('');
-      
+      print('❌ Error fetching pending requests: $e');
       return [];
     }
   }
@@ -327,9 +205,16 @@ class FirebaseDriverService {
   // Respond to ride request (accept/reject)
   Future<void> respondToRequest(String bookingId, String driverId, bool accept) async {
     try {
-      print('🔵 Driver responding to request: $bookingId');
+      print('🔵 Driver responding to request');
+      print('   Firestore Booking ID: $bookingId'); // ✅ Should now be the real ID
       print('   Accept: $accept');
       print('   Driver ID: $driverId');
+      
+      // ✅ VALIDATION: Check if bookingId looks valid
+      if (bookingId.isEmpty || bookingId == '0' || bookingId == 'null') {
+        print('❌ ERROR: Invalid booking ID: "$bookingId"');
+        throw Exception('Invalid booking ID. This should be the Firestore document ID.');
+      }
       
       if (accept) {
         // Accept the request
@@ -343,11 +228,17 @@ class FirebaseDriverService {
 
         // Create a driver job entry
         final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+        
+        if (!bookingDoc.exists) {
+          print('   ❌ ERROR: Booking document not found after update!');
+          throw Exception('Booking not found');
+        }
+        
         final bookingData = bookingDoc.data()!;
 
         final jobData = {
           'driver_id': driverId,
-          'booking_id': bookingId,
+          'booking_id': bookingId, // ✅ Store the actual Firestore document ID
           'customer_name': bookingData['user_name'],
           'customer_phone': bookingData['user_phone'],
           'vehicle_name': bookingData['vehicle_name'],
@@ -380,6 +271,8 @@ class FirebaseDriverService {
       }
     } catch (e) {
       print('❌ Error responding to request: $e');
+      print('   Booking ID was: $bookingId');
+      print('   Driver ID was: $driverId');
       throw Exception('Failed to respond to request: $e');
     }
   }
@@ -562,10 +455,11 @@ class FirebaseDriverService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         
+        // ✅ CRITICAL FIX: This was probably still using int.tryParse!
         return RideRequest(
-          requestId: int.tryParse(doc.id) ?? 0,
-          driverId: int.tryParse(driverId) ?? 0,
-          bookingId: int.tryParse(doc.id) ?? 0,
+          requestId: '', // ✅ Empty string (not 0!)
+          driverId: driverId, // ✅ String
+          bookingId: doc.id, // ✅ CRITICAL: Firestore document ID as String
           customerName: data['user_name'] ?? '',
           customerPhone: data['user_phone'] ?? '',
           vehicleName: data['vehicle_name'] ?? '',

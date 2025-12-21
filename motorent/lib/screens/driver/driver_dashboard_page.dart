@@ -106,9 +106,20 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
 
   Future<void> _respondToRequest(RideRequest request, bool accept) async {
     try {
+      // ✅ FIXED: bookingId is now already a String containing the Firestore doc ID
+      print('🟢 Calling respondToRequest with:');
+      print('   Booking ID (Firestore Doc ID): ${request.bookingId}');
+      print('   Driver ID: ${widget.driver.userIdString}');
+      print('   Accept: $accept');
+      
+      // ✅ VALIDATION: Make sure we have a valid Firestore document ID
+      if (request.bookingId.isEmpty || request.bookingId == '0') {
+        throw Exception('Invalid booking ID: ${request.bookingId}');
+      }
+      
       // Use Firebase service directly with proper parameters
       await _firebaseDriverService.respondToRequest(
-        request.bookingId.toString(), 
+        request.bookingId, // ✅ PERFECT: This is now the actual Firestore document ID
         widget.driver.userIdString,
         accept,
       );
@@ -129,6 +140,8 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       
       _loadDashboardData();
     } catch (e) {
+      print('❌ Error in _respondToRequest: $e');
+      
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(

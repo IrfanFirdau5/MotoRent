@@ -1,10 +1,10 @@
 // FILE PATH: motorent/lib/models/ride_request.dart
-// CREATE THIS NEW FILE
+// ✅ FIXED: Changed all IDs to String to match other models (Booking, Vehicle, User, etc.)
 
 class RideRequest {
-  final int requestId;
-  final int driverId;
-  final int bookingId;
+  final String requestId; // ✅ Changed from int to String
+  final String driverId; // ✅ Changed from int to String
+  final String bookingId; // ✅ Changed from int to String (Firestore doc ID)
   final String customerName;
   final String customerPhone;
   final String vehicleName;
@@ -28,9 +28,9 @@ class RideRequest {
 
   factory RideRequest.fromJson(Map<String, dynamic> json) {
     return RideRequest(
-      requestId: json['request_id'] ?? 0,
-      driverId: json['driver_id'] ?? 0,
-      bookingId: json['booking_id'] ?? 0,
+      requestId: json['request_id']?.toString() ?? '',
+      driverId: json['driver_id']?.toString() ?? '',
+      bookingId: json['booking_id']?.toString() ?? '',
       customerName: json['customer_name'] ?? '',
       customerPhone: json['customer_phone'] ?? '',
       vehicleName: json['vehicle_name'] ?? '',
