@@ -6,13 +6,15 @@ import 'owner_bookings_page.dart';
 import 'revenue_overview_page.dart';
 import 'manage_company_drivers_page.dart';
 import 'owner_report_page.dart';
+import 'owner_profile_page.dart';
 import '/services/firebase_booking_service.dart';
 import '/services/firebase_vehicle_service.dart';
 import '/models/vehicle.dart';
+import '/models/user.dart';
 import '../debug_everything_page.dart';
 import '../login_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:intl/intl.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
@@ -52,13 +54,11 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     });
 
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
       
       if (currentUser == null) {
         throw Exception('User not logged in');
       }
-
-      print('📊 Loading dashboard data for owner: ${currentUser.uid}');
 
       // Fetch vehicles
       final vehiclesSnapshot = await FirebaseFirestore.instance
@@ -81,7 +81,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       double totalRating = 0.0;
       int ratedVehicles = 0;
 
-      // Calculate active bookings and revenue
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month, 1);
       
@@ -89,7 +88,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         final data = doc.data();
         final status = data['booking_status'] as String?;
         
-        // Count active bookings
         if (status?.toLowerCase() == 'confirmed') {
           final endDate = data['end_date'] is Timestamp 
               ? (data['end_date'] as Timestamp).toDate()
@@ -100,7 +98,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           }
         }
         
-        // Calculate monthly revenue from completed bookings
         if (status?.toLowerCase() == 'completed') {
           final completedDate = data['created_at'] is Timestamp
               ? (data['created_at'] as Timestamp).toDate()
@@ -112,7 +109,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         }
       }
 
-      // Calculate average rating
       for (var doc in vehiclesSnapshot.docs) {
         final data = doc.data();
         final rating = data['rating'] as num?;
@@ -124,13 +120,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
       double averageRating = ratedVehicles > 0 ? totalRating / ratedVehicles : 0.0;
 
-      print('✅ Dashboard data loaded:');
-      print('   Vehicles: $totalVehicles');
-      print('   Active Bookings: $activeBookings');
-      print('   Total Bookings: $totalBookings');
-      print('   Monthly Revenue: RM $monthlyRevenue');
-      print('   Average Rating: $averageRating');
-
       setState(() {
         _totalVehicles = totalVehicles;
         _activeBookings = activeBookings;
@@ -140,14 +129,13 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Error loading dashboard: $e');
       setState(() => _isLoading = false);
     }
   }
 
   Future<List<Map<String, dynamic>>> _loadRecentBookings() async {
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
       if (currentUser == null) return [];
 
       final snapshot = await FirebaseFirestore.instance
@@ -168,21 +156,17 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         };
       }).toList();
     } catch (e) {
-      print('Error loading recent bookings: $e');
       return [];
     }
   }
 
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -202,18 +186,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
     if (shouldLogout == true) {
       try {
-        // Sign out from Firebase
-        await FirebaseAuth.instance.signOut();
-
+        await auth.FirebaseAuth.instance.signOut();
         if (!mounted) return;
 
-        // Navigate to login page and remove all previous routes
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginPage()),
           (route) => false,
         );
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Logged out successfully'),
@@ -223,12 +203,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         );
       } catch (e) {
         if (!mounted) return;
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error logging out: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -246,47 +224,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Navigate to notifications
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Notifications coming soon!')),
+              );
             },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.account_circle),
-            onSelected: (value) {
-              if (value == 'profile') {
-                // TODO: Navigate to profile
-              } else if (value == 'logout') {
-                _handleLogout();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.person, color: Colors.grey),
-                    SizedBox(width: 12),
-                    Text('Profile'),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 12),
-                    Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),
+      drawer: _buildSidebar(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -296,340 +241,56 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Welcome Section
-                    Text(
-                      'Welcome back,',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      widget.ownerName,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('Welcome back,', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                    Text(widget.ownerName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 24),
 
-                    // Quick Stats
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'Total Vehicles',
-                            _totalVehicles.toString(),
-                            Icons.directions_car,
-                            Colors.blue,
-                          ),
-                        ),
+                        Expanded(child: _buildStatCard('Total Vehicles', _totalVehicles.toString(), Icons.directions_car, Colors.blue)),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            'Active Bookings',
-                            _activeBookings.toString(),
-                            Icons.event_available,
-                            Colors.green,
-                          ),
-                        ),
+                        Expanded(child: _buildStatCard('Active Bookings', _activeBookings.toString(), Icons.event_available, Colors.green)),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'Monthly Revenue',
-                            'RM ${_monthlyRevenue.toStringAsFixed(0)}',
-                            Icons.attach_money,
-                            Colors.orange,
-                          ),
-                        ),
+                        Expanded(child: _buildStatCard('Monthly Revenue', 'RM ${_monthlyRevenue.toStringAsFixed(0)}', Icons.attach_money, Colors.orange)),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            'Avg Rating',
-                            _averageRating.toStringAsFixed(1),
-                            Icons.star,
-                            Colors.amber,
-                          ),
-                        ),
+                        Expanded(child: _buildStatCard('Avg Rating', _averageRating.toStringAsFixed(1), Icons.star, Colors.amber)),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // Quick Actions
-                    const Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    // Revenue Overview with View Details button
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: _buildActionButton(
-                            'Add Vehicle',
-                            Icons.add_circle,
-                            Colors.blue,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AddVehiclePage(
-                                    ownerId: widget.ownerId,
-                                  ),
-                                ),
-                              ).then((value) {
-                                if (value == true) {
-                                  _loadDashboardData();
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionButton(
-                            'My Vehicles',
-                            Icons.garage,
-                            Colors.green,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MyVehiclesPage(
-                                    ownerId: widget.ownerId,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                        const Text('Revenue Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => RevenueOverviewPage(ownerId: widget.ownerId)));
+                          },
+                          child: const Text('View Details'),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionButton(
-                            'View Bookings',
-                            Icons.calendar_month,
-                            Colors.orange,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OwnerBookingsPage(
-                                    ownerId: widget.ownerId,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionButton(
-                            'My Drivers',
-                            Icons.people,
-                            Colors.purple,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ManageCompanyDriversPage(
-                                    ownerId: widget.ownerId,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Report Issue Button
-                    _buildActionButton(
-                      'Report Issue',
-                      Icons.report_problem,
-                      Colors.red,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OwnerReportPage(
-                              userId: widget.ownerId.toString(),
-                              userName: widget.ownerName,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Revenue Chart
-                    const Text(
-                      'Revenue Overview',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
                     ),
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RevenueOverviewPage(
-                              ownerId: widget.ownerId,
-                            ),
-                          ),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => RevenueOverviewPage(ownerId: widget.ownerId)));
                       },
-                      borderRadius: BorderRadius.circular(15),
-                      child: Container(
-                        height: 200,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.1),
-                              spreadRadius: 1,
-                              blurRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            LineChart(
-                              LineChartData(
-                                gridData: FlGridData(show: false),
-                                titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  rightTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  topTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      getTitlesWidget: (value, meta) {
-                                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                                        if (value.toInt() >= 0 && value.toInt() < months.length) {
-                                          return Text(
-                                            months[value.toInt()],
-                                            style: const TextStyle(fontSize: 12),
-                                          );
-                                        }
-                                        return const Text('');
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                borderData: FlBorderData(show: false),
-                                lineBarsData: [
-                                  LineChartBarData(
-                                    spots: [
-                                      const FlSpot(0, 3000),
-                                      const FlSpot(1, 3500),
-                                      const FlSpot(2, 4200),
-                                      const FlSpot(3, 3800),
-                                      const FlSpot(4, 4500),
-                                      const FlSpot(5, 4567.50),
-                                    ],
-                                    isCurved: true,
-                                    color: const Color(0xFF1E88E5),
-                                    barWidth: 3,
-                                    dotData: FlDotData(show: true),
-                                    belowBarData: BarAreaData(
-                                      show: true,
-                                      color: const Color(0xFF1E88E5).withOpacity(0.1),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1E88E5).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.touch_app,
-                                      size: 14,
-                                      color: Color(0xFF1E88E5),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Tap for details',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.blue[700],
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      child: _buildRevenueChart(),
                     ),
                     const SizedBox(height: 24),
                     
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DebugEverythingPage(),
-                          ),
-                        );
-                      },
-                      child: const Text('Debug Everything'),
-                    ),
-                    
-                    // Recent Bookings
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Recent Bookings',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        const Text('Recent Bookings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         TextButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OwnerBookingsPage(
-                                  ownerId: widget.ownerId,
-                                ),
-                              ),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerBookingsPage(ownerId: widget.ownerId)));
                           },
                           child: const Text('View All'),
                         ),
@@ -642,30 +303,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
-
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Text(
-                                'No recent bookings',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ),
-                          );
+                          return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('No recent bookings', style: TextStyle(color: Colors.grey[600]))));
                         }
-
-                        return Column(
-                          children: snapshot.data!.map((booking) {
-                            return _buildRecentBookingCard(
-                              booking['vehicleName'],
-                              booking['customerName'],
-                              booking['dates'],
-                              booking['amount'],
-                              booking['status'],
-                            );
-                          }).toList(),
-                        );
+                        return Column(children: snapshot.data!.map((b) => _buildRecentBookingCard(b['vehicleName'], b['customerName'], b['dates'], b['amount'], b['status'])).toList());
                       },
                     ),
                   ],
@@ -675,106 +316,191 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     );
   }
 
+  Widget _buildSidebar() {
+    final currentUser = auth.FirebaseAuth.instance.currentUser;
+    
+    return Drawer(
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF1E88E5), Color(0xFF1565C0)]),
+            ),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.white,
+                  child: Text(widget.ownerName[0].toUpperCase(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
+                ),
+                const SizedBox(height: 12),
+                Text(widget.ownerName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text(currentUser?.email ?? '', style: const TextStyle(fontSize: 13, color: Colors.white70)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                  child: const Text('Vehicle Owner', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 8),
+                  _buildDrawerItem(icon: Icons.person, title: 'Edit Profile', onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser?.uid).get();
+                    if (userDoc.exists && mounted) {
+                      final userData = userDoc.data()!;
+                      userData['user_id'] = userDoc.id;
+                      if (userData['created_at'] is Timestamp) {
+                        userData['created_at'] = (userData['created_at'] as Timestamp).toDate().toIso8601String();
+                      }
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerProfilePage(user: User.fromJson(userData))));
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                  }
+                }),
+                const Divider(height: 1),
+                
+                Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('VEHICLES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),
+                _buildDrawerItem(icon: Icons.add_circle, title: 'Add Vehicle', color: Colors.blue, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => AddVehiclePage(ownerId: widget.ownerId))).then((v) { if (v == true) _loadDashboardData(); });
+                }),
+                _buildDrawerItem(icon: Icons.garage, title: 'My Vehicles', color: Colors.green, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => MyVehiclesPage(ownerId: widget.ownerId)));
+                }),
+                const Divider(height: 1),
+                
+                Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('MANAGEMENT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),
+                _buildDrawerItem(icon: Icons.calendar_month, title: 'View Bookings', color: Colors.orange, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerBookingsPage(ownerId: widget.ownerId)));
+                }),
+                _buildDrawerItem(icon: Icons.people, title: 'My Drivers', color: Colors.purple, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ManageCompanyDriversPage(ownerId: widget.ownerId)));
+                }),
+                const Divider(height: 1),
+                
+                Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('SUPPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),
+                _buildDrawerItem(icon: Icons.report_problem, title: 'Report Issue', color: Colors.red, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerReportPage(userId: widget.ownerId.toString(), userName: widget.ownerName)));
+                }),
+                _buildDrawerItem(icon: Icons.bug_report, title: 'Debug Tools', color: Colors.grey, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DebugEverythingPage()));
+                }),
+              ],
+            ),
+          ),
+          
+          Container(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey[300]!))),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+              onTap: () { Navigator.pop(context); _handleLogout(); },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({required IconData icon, required String title, required VoidCallback onTap, Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? Colors.grey[700]),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+    );
+  }
+
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  Widget _buildRevenueChart() {
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)],
       ),
-      icon: Icon(icon, color: Colors.white),
-      label: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(show: false),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                  return Text(value.toInt() >= 0 && value.toInt() < months.length ? months[value.toInt()] : '');
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: const [FlSpot(0, 3000), FlSpot(1, 3500), FlSpot(2, 4200), FlSpot(3, 3800), FlSpot(4, 4500), FlSpot(5, 4567.50)],
+              isCurved: true,
+              color: const Color(0xFF1E88E5),
+              barWidth: 3,
+              dotData: FlDotData(show: true),
+              belowBarData: BarAreaData(show: true, color: const Color(0xFF1E88E5).withOpacity(0.1)),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildRecentBookingCard(
-    String vehicleName,
-    String customerName,
-    String dates,
-    String amount,
-    String status,
-  ) {
-    Color statusColor;
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-        statusColor = Colors.green;
-        break;
-      case 'pending':
-        statusColor = Colors.orange;
-        break;
-      case 'completed':
-        statusColor = Colors.blue;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
+  Widget _buildRecentBookingCard(String vehicleName, String customerName, String dates, String amount, String status) {
+    Color statusColor = status.toLowerCase() == 'confirmed' ? Colors.green : status.toLowerCase() == 'pending' ? Colors.orange : status.toLowerCase() == 'completed' ? Colors.blue : Colors.grey;
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -782,43 +508,19 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             Container(
               width: 50,
               height: 50,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.directions_car,
-                color: Colors.grey,
-              ),
+              decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.directions_car, color: Colors.grey),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    vehicleName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  Text(vehicleName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
-                  Text(
-                    customerName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+                  Text(customerName, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                   const SizedBox(height: 4),
-                  Text(
-                    dates,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
+                  Text(dates, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                 ],
               ),
             ),
@@ -826,32 +528,12 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(12)),
+                  child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  amount,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E88E5),
-                    fontSize: 16,
-                  ),
-                ),
+                Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E88E5), fontSize: 16)),
               ],
             ),
           ],
