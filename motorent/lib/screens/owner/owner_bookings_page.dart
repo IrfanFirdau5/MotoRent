@@ -1,11 +1,13 @@
-// FILE: motorent/lib/screens/owner/owner_bookings_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
+// FILE: lib/screens/owner/owner_bookings_page.dart
+// FIXED VERSION - Shows all bookings properly
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../services/firebase_booking_service.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class OwnerBookingsPage extends StatefulWidget {
   final int ownerId;
@@ -51,11 +53,55 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     });
 
     try {
-      print('🔍 Loading bookings for owner: ${widget.ownerId}');
+      final currentUser = FirebaseAuth.instance.currentUser;
       
-      final bookings = await _bookingService.fetchOwnerBookings(
-        widget.ownerId.toString()
-      );
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      print('🔍 Loading bookings for owner: ${currentUser.uid}');
+      
+      // Fetch bookings directly from Firestore with simplified query
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .get();
+
+      print('📦 Query returned: ${querySnapshot.docs.length} bookings');
+
+      if (querySnapshot.docs.isEmpty) {
+        print('ℹ️  No bookings found for owner: ${currentUser.uid}');
+        setState(() {
+          _allBookings = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Convert to Booking objects
+      final bookings = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['booking_id'] = doc.id;
+        
+        // Handle Timestamp conversions
+        if (data['created_at'] is Timestamp) {
+          data['created_at'] = (data['created_at'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        if (data['start_date'] is Timestamp) {
+          data['start_date'] = (data['start_date'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        if (data['end_date'] is Timestamp) {
+          data['end_date'] = (data['end_date'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        
+        return Booking.fromJson(data);
+      }).toList();
 
       print('✅ Loaded ${bookings.length} bookings');
 
@@ -64,8 +110,10 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         _categorizeBookings();
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error loading bookings: $e');
+      print('Stack trace: $stackTrace');
+      
       setState(() {
         _errorMessage = 'Failed to load bookings: $e';
         _isLoading = false;
@@ -86,9 +134,15 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         .where((b) => b.bookingStatus.toLowerCase() == 'completed')
         .toList();
 
+    // Sort by date
     _pendingBookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _confirmedBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _completedBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
+
+    print('📊 Categorized bookings:');
+    print('   Pending: ${_pendingBookings.length}');
+    print('   Confirmed: ${_confirmedBookings.length}');
+    print('   Completed: ${_completedBookings.length}');
   }
 
   Future<void> _approveBooking(Booking booking) async {
@@ -135,9 +189,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     );
 
     try {
-      print('🔵 Approving booking: ${booking.bookingId}');
-      print('   Need Driver: ${booking.needDriver}');
-      
       final result = await _bookingService.approveBooking(
         booking.bookingId.toString()
       );
@@ -153,12 +204,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
             duration: const Duration(seconds: 3),
           ),
         );
-        
-        print('✅ Booking approved successfully');
-        if (booking.needDriver) {
-          print('   Driver request is now visible to drivers');
-        }
-        
         _loadBookings();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -169,8 +214,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         );
       }
     } catch (e) {
-      print('❌ Error approving booking: $e');
-      
       if (!mounted) return;
       Navigator.pop(context); // Close loading
 
@@ -476,10 +519,13 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
