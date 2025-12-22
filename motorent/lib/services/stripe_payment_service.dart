@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class StripePaymentService {
   // In production, this MUST be on backend/Cloud Functions
-  static const String _secretKey = 'sk_test_51Sh0vdDJJKjBR2ZQjHgSjNvSSltjabW200OYhgUYmp9qKyQBWfA35CevM5jdesM2WiAuKULza3zvQ63VIqLmmpkx00AMq9xalc'; 
+  // Secret key here
   
   // Create payment intent on Stripe
   Future<Map<String, dynamic>> createPaymentIntent({
