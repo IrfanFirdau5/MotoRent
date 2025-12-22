@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '/models/vehicle.dart';
 import '/services/firebase_vehicle_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/review_service.dart'; 
+import 'package:motorent/services/vehicle_service.dart';
 
 class MyVehiclesPage extends StatefulWidget {
   final dynamic ownerId; // Can accept int or String
@@ -22,10 +24,12 @@ class MyVehiclesPage extends StatefulWidget {
 
 class _MyVehiclesPageState extends State<MyVehiclesPage> {
   final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
+  final ReviewService _reviewService = ReviewService();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
+  Map<String, Map<String, dynamic>> _vehicleReviewData = {};
   @override
   void initState() {
     super.initState();
@@ -395,6 +399,14 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Widget _buildVehicleCard(Vehicle vehicle) {
+
+    final reviewData = _vehicleReviewData[vehicle.vehicleId.toString()];
+    final actualRating = reviewData?['rating'] as double?;
+    final actualCount = reviewData?['count'] as int? ?? 0;
+    
+    final hasRating = actualRating != null && actualRating > 0;
+    final reviewCount = actualCount;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
@@ -504,50 +516,33 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                 const SizedBox(height: 12),
                 
                 // Rating
-                if (vehicle.rating != null)
-                  Row(
-                    children: [
-                      ...List.generate(5, (index) {
-                        if (index < vehicle.rating!.floor()) {
-                          return const Icon(
-                            Icons.star,
-                            size: 18,
-                            color: Colors.amber,
-                          );
-                        } else if (index == vehicle.rating!.floor() &&
-                            vehicle.rating! % 1 >= 0.5) {
-                          return const Icon(
-                            Icons.star_half,
-                            size: 18,
-                            color: Colors.amber,
-                          );
-                        } else {
-                          return Icon(
-                            Icons.star_border,
-                            size: 18,
-                            color: Colors.grey[400],
-                          );
-                        }
-                      }),
-                      const SizedBox(width: 6),
-                      Text(
-                        vehicle.rating!.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                if (vehicle.rating != null && vehicle.rating! > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star, size: 18, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(
+                          vehicle.rating!.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${vehicle.reviewCount ?? 0} reviews)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                        const SizedBox(width: 4),
+                        Text(
+                          '(${vehicle.reviewCount ?? 0} reviews)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 16),
                 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
