@@ -415,7 +415,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Pending'),
+                  const Text('Pending', style: const TextStyle(color: Colors.white)),
                   if (_pendingBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -444,7 +444,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Confirmed'),
+                  const Text('Confirmed', style: const TextStyle(color: Colors.white)),
                   if (_confirmedBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -473,7 +473,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Completed'),
+                  const Text('Completed', style: const TextStyle(color: Colors.white)),
                   if (_completedBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(

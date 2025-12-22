@@ -1,5 +1,5 @@
 // FILE: motorent/lib/screens/customer/my_bookings_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
+// ✅ ENHANCED: Better review button flow with proper integration
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,12 +8,12 @@ import '../../models/booking.dart';
 import '../../models/vehicle.dart';
 import '../../models/user.dart';
 import '../../services/firebase_booking_service.dart';
-import '../../services/vehicle_service.dart';
+import '../../services/firebase_vehicle_service.dart';
 import '../../services/review_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/customer_drawer.dart';
 import 'vehicle_listing_page.dart';
-import 'add_review_page.dart';
+import 'submit_review_page.dart'; // ✅ Changed from add_review_page
 
 class MyBookingsPage extends StatefulWidget {
   final String userId;
@@ -30,7 +30,7 @@ class MyBookingsPage extends StatefulWidget {
 class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
   final FirebaseBookingService _bookingService = FirebaseBookingService();
-  final VehicleService _vehicleService = VehicleService();
+  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
   final ReviewService _reviewService = ReviewService();
   final AuthService _authService = AuthService();
   late TabController _tabController;
@@ -43,8 +43,11 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Track which bookings have reviews (booking_id -> has_review)
+  // ✅ Track which bookings have reviews (booking_id -> has_review)
   Map<String, bool> _reviewStatus = {};
+  
+  // ✅ Cache vehicles to avoid repeated fetches
+  Map<String, Vehicle?> _vehicleCache = {};
 
   @override
   void initState() {
@@ -85,7 +88,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       
       print('✅ Loaded ${bookings.length} bookings');
       
-      // Check review status for each completed booking
+      // ✅ Check review status for each completed booking
       for (var booking in bookings) {
         if (booking.bookingStatus.toLowerCase() == 'completed') {
           try {
@@ -94,8 +97,9 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               booking.bookingId,
             );
             _reviewStatus[booking.bookingId.toString()] = hasReview;
+            print('   Booking ${booking.bookingId}: hasReview = $hasReview');
           } catch (e) {
-            print('Error checking review status for booking ${booking.bookingId}: $e');
+            print('⚠️  Error checking review status for booking ${booking.bookingId}: $e');
             _reviewStatus[booking.bookingId.toString()] = false;
           }
         }
@@ -225,21 +229,107 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     }
   }
 
+  // ✅ ENHANCED: Fetch vehicle for review
+  Future<Vehicle?> _getVehicleForReview(String vehicleId) async {
+    // Check cache first
+    if (_vehicleCache.containsKey(vehicleId)) {
+      return _vehicleCache[vehicleId];
+    }
+
+    try {
+      print('🔍 Fetching vehicle for review: $vehicleId');
+      final vehicle = await _vehicleService.fetchVehicleById(vehicleId);
+      
+      // Cache it
+      _vehicleCache[vehicleId] = vehicle;
+      
+      return vehicle;
+    } catch (e) {
+      print('❌ Error fetching vehicle: $e');
+      return null;
+    }
+  }
+
+  // ✅ ENHANCED: Write review with better error handling
   Future<void> _writeReview(Booking booking) async {
-    // Navigate to review page
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddReviewPage(
-          booking: booking,
-          userId: widget.userId,
-        ),
+    // Show loading while fetching vehicle
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
 
-    // If review was submitted successfully, reload bookings
-    if (result == true) {
-      _loadBookings();
+    try {
+      print('📝 Preparing to write review for booking: ${booking.bookingId}');
+      
+      // Fetch the vehicle details
+      final vehicle = await _getVehicleForReview(booking.vehicleId);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (vehicle == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load vehicle details. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      print('✅ Vehicle loaded: ${vehicle.fullName}');
+      
+      // Navigate to review page
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubmitReviewPage(
+            vehicle: vehicle,
+            bookingId: booking.bookingId.toString(), // ✅ Convert to String
+            userId: widget.userId,
+          ),
+        ),
+      );
+
+      // If review was submitted successfully, reload bookings
+      if (result == true) {
+        print('✅ Review submitted, reloading bookings...');
+        _loadBookings();
+        
+        if (!mounted) return;
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Thank you for your review!'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error preparing review: $e');
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading if still open
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -371,6 +461,19 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                 color: Colors.grey[600],
               ),
             ),
+            const SizedBox(height: 8),
+            if (type == 'past')
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'Your completed bookings will appear here',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ),
           ],
         ),
       );
@@ -394,6 +497,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         booking.bookingStatus.toLowerCase() != 'cancelled' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
     
+    // ✅ ENHANCED: Better review status checking
     final canReview = type == 'past' && 
         booking.bookingStatus.toLowerCase() == 'completed' &&
         !(_reviewStatus[booking.bookingId.toString()] ?? false);
@@ -622,7 +726,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
 
-            // Review button for completed bookings without review
+            // ✅ ENHANCED: Review button for completed bookings
             if (canReview) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -639,16 +743,17 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1E88E5),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
+                    elevation: 2,
                   ),
                 ),
               ),
             ],
 
-            // Already reviewed indicator
+            // ✅ ENHANCED: Already reviewed indicator
             if (hasReviewed) ...[
               const SizedBox(height: 12),
               Container(

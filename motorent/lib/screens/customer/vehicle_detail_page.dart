@@ -1,5 +1,5 @@
 // FILE: motorent/lib/screens/customer/vehicle_detail_page.dart
-// REPLACE THE ENTIRE FILE WITH THIS
+// ✅ FIXED: Reviews now show correctly even if vehicle.rating is null
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,9 +9,11 @@ import 'view_reviews_page.dart';
 import 'booking_page.dart';
 import 'license_verification_page.dart';
 import '../../models/user.dart';
+import '../../models/review.dart';
 import '../../services/auth_service.dart';
+import '../../services/review_service.dart';
 
-class VehicleDetailPage extends StatelessWidget {
+class VehicleDetailPage extends StatefulWidget {
   final Vehicle vehicle;
   final String userId;
 
@@ -22,7 +24,78 @@ class VehicleDetailPage extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<VehicleDetailPage> createState() => _VehicleDetailPageState();
+}
+
+class _VehicleDetailPageState extends State<VehicleDetailPage> {
+  final ReviewService _reviewService = ReviewService();
+  List<Review> _recentReviews = [];
+  bool _loadingReviews = true; // ✅ Changed to true initially
+  Map<int, int> _ratingDistribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+  double? _actualAverageRating; // ✅ Track actual rating from reviews
+  int _totalReviewCount = 0; // ✅ Track actual count
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentReviews();
+  }
+
+  Future<void> _loadRecentReviews() async {
+    setState(() {
+      _loadingReviews = true;
+    });
+
+    try {
+      print('🔍 Loading reviews for vehicle: ${widget.vehicle.vehicleId}');
+      
+      // Fetch all reviews
+      final allReviews = await _reviewService.fetchVehicleReviews(
+        widget.vehicle.vehicleId.toString()
+      );
+      
+      print('✅ Found ${allReviews.length} reviews');
+      
+      // Calculate rating distribution
+      Map<int, int> distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+      double totalRating = 0;
+      
+      for (var review in allReviews) {
+        distribution[review.rating] = (distribution[review.rating] ?? 0) + 1;
+        totalRating += review.rating;
+      }
+      
+      // Calculate average
+      double? avgRating;
+      if (allReviews.isNotEmpty) {
+        avgRating = totalRating / allReviews.length;
+      }
+      
+      setState(() {
+        _recentReviews = allReviews.take(3).toList(); // Show only 3 recent
+        _ratingDistribution = distribution;
+        _actualAverageRating = avgRating;
+        _totalReviewCount = allReviews.length;
+        _loadingReviews = false;
+      });
+      
+      print('✅ Loaded ${allReviews.length} reviews (showing ${_recentReviews.length})');
+      print('   Average rating: ${avgRating?.toStringAsFixed(1) ?? "N/A"}');
+    } catch (e) {
+      print('❌ Error loading reviews: $e');
+      setState(() {
+        _loadingReviews = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // ✅ Use actual loaded data instead of vehicle data
+    final hasReviews = _totalReviewCount > 0;
+    final displayRating = _actualAverageRating ?? widget.vehicle.rating ?? 0.0;
+    final reviewCount = _totalReviewCount;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -33,7 +106,7 @@ class VehicleDetailPage extends StatelessWidget {
             backgroundColor: const Color(0xFF1E88E5),
             flexibleSpace: FlexibleSpaceBar(
               background: CachedNetworkImage(
-                imageUrl: vehicle.imageUrl,
+                imageUrl: widget.vehicle.imageUrl,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: Colors.grey[300],
@@ -66,7 +139,7 @@ class VehicleDetailPage extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          vehicle.fullName,
+                          widget.vehicle.fullName,
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -79,11 +152,11 @@ class VehicleDetailPage extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: vehicle.isAvailable ? Colors.green : Colors.red,
+                          color: widget.vehicle.isAvailable ? Colors.green : Colors.red,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          vehicle.isAvailable ? 'Available' : 'Unavailable',
+                          widget.vehicle.isAvailable ? 'Available' : 'Unavailable',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -95,31 +168,127 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // Rating
-                  if (vehicle.rating != null)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star,
-                          size: 20,
-                          color: Colors.amber,
+                  // ✅ ENHANCED: Rating with "View All" link
+                  if (_loadingReviews)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Loading reviews...',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (hasReviews)
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ViewReviewsPage(
+                              vehicle: widget.vehicle,
+                              currentUserId: widget.userId,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '${vehicle.rating!.toStringAsFixed(1)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.amber.withOpacity(0.3),
                           ),
                         ),
-                        Text(
-                          ' (${vehicle.reviewCount ?? 0} reviews)',
-                          style: TextStyle(
-                            fontSize: 14,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              size: 20,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              displayRating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '($reviewCount ${reviewCount == 1 ? 'review' : 'reviews'})',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.rate_review_outlined,
+                            size: 16,
                             color: Colors.grey[600],
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'No reviews yet',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   const SizedBox(height: 20),
 
@@ -146,7 +315,7 @@ class VehicleDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          'RM ${vehicle.pricePerDay.toStringAsFixed(2)}',
+                          'RM ${widget.vehicle.pricePerDay.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
@@ -165,97 +334,162 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 25),
 
-                  // Reviews Section
-                  if (vehicle.rating != null && vehicle.reviewCount != null)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // ✅ FIXED: Reviews Section - Show if we actually have reviews
+                  if (hasReviews && !_loadingReviews) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Reviews & Ratings',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                        const Text(
+                          'Reviews & Ratings',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ViewReviewsPage(
+                                  vehicle: widget.vehicle,
+                                  currentUserId: widget.userId,
+                                ),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ViewReviewsPage(
-                                      vehicle: vehicle,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: const Text('View All'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                Column(
-                                  children: [
-                                    Text(
-                                      vehicle.rating!.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                        fontSize: 48,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E88E5),
-                                      ),
-                                    ),
-                                    Row(
-                                      children: List.generate(5, (index) {
-                                        return Icon(
-                                          index < vehicle.rating!.round()
-                                              ? Icons.star
-                                              : Icons.star_border,
-                                          size: 20,
-                                          color: Colors.amber,
-                                        );
-                                      }),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${vehicle.reviewCount} reviews',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildRatingBar(5, 0.7),
-                                      _buildRatingBar(4, 0.2),
-                                      _buildRatingBar(3, 0.05),
-                                      _buildRatingBar(2, 0.03),
-                                      _buildRatingBar(1, 0.02),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                            );
+                          },
+                          icon: const Icon(Icons.arrow_forward, size: 18),
+                          label: const Text('View All'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF1E88E5),
                           ),
                         ),
-                        const SizedBox(height: 25),
                       ],
                     ),
+                    const SizedBox(height: 12),
+
+                    // Rating Summary Card
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewReviewsPage(
+                                vehicle: widget.vehicle,
+                                currentUserId: widget.userId,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              // Average Rating
+                              Column(
+                                children: [
+                                  Text(
+                                    displayRating.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      fontSize: 48,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1E88E5),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: List.generate(5, (index) {
+                                      return Icon(
+                                        index < displayRating.round()
+                                            ? Icons.star
+                                            : Icons.star_border,
+                                        size: 20,
+                                        color: Colors.amber,
+                                      );
+                                    }),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$reviewCount ${reviewCount == 1 ? 'review' : 'reviews'}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 20),
+                              
+                              // Rating Distribution
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildMiniRatingBar(5, _ratingDistribution[5] ?? 0, reviewCount),
+                                    _buildMiniRatingBar(4, _ratingDistribution[4] ?? 0, reviewCount),
+                                    _buildMiniRatingBar(3, _ratingDistribution[3] ?? 0, reviewCount),
+                                    _buildMiniRatingBar(2, _ratingDistribution[2] ?? 0, reviewCount),
+                                    _buildMiniRatingBar(1, _ratingDistribution[1] ?? 0, reviewCount),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Recent Reviews Preview
+                    if (_recentReviews.isNotEmpty) ...[
+                      const Text(
+                        'Recent Reviews',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ..._recentReviews.map((review) => _buildReviewPreview(review)),
+                      
+                      // View All Button
+                      const SizedBox(height: 12),
+                      Center(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ViewReviewsPage(
+                                  vehicle: widget.vehicle,
+                                  currentUserId: widget.userId,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.rate_review),
+                          label: Text('View All $reviewCount Reviews'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF1E88E5),
+                            side: const BorderSide(color: Color(0xFF1E88E5)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 25),
+                  ],
 
                   // Vehicle Information Section
                   const Text(
@@ -267,14 +501,14 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
 
-                  _buildInfoRow(Icons.directions_car, 'Brand', vehicle.brand),
-                  _buildInfoRow(Icons.car_rental, 'Model', vehicle.model),
-                  _buildInfoRow(Icons.confirmation_number, 'License Plate', vehicle.licensePlate),
-                  _buildInfoRow(Icons.store, 'Owner', vehicle.ownerName ?? 'Unknown'),
+                  _buildInfoRow(Icons.directions_car, 'Brand', widget.vehicle.brand),
+                  _buildInfoRow(Icons.car_rental, 'Model', widget.vehicle.model),
+                  _buildInfoRow(Icons.confirmation_number, 'License Plate', widget.vehicle.licensePlate),
+                  _buildInfoRow(Icons.store, 'Owner', widget.vehicle.ownerName ?? 'Unknown'),
                   _buildInfoRow(
                     Icons.calendar_today,
                     'Listed Since',
-                    DateFormat('dd MMM yyyy').format(vehicle.createdAt),
+                    DateFormat('dd MMM yyyy').format(widget.vehicle.createdAt),
                   ),
 
                   const SizedBox(height: 25),
@@ -289,7 +523,7 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    vehicle.description,
+                    widget.vehicle.description,
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[700],
@@ -298,14 +532,13 @@ class VehicleDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
 
-                  // Book Now Button - WITH LICENSE VERIFICATION CHECK
+                  // Book Now Button
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: vehicle.isAvailable
+                      onPressed: widget.vehicle.isAvailable
                           ? () async {
-                              // Check if user is logged in
                               final currentUser = await AuthService().getCurrentUser();
                               
                               if (currentUser == null) {
@@ -319,11 +552,9 @@ class VehicleDetailPage extends StatelessWidget {
                                 return;
                               }
 
-                              // Check if license is verified
                               if (!currentUser.isLicenseVerified) {
                                 if (!context.mounted) return;
                                 
-                                // Show verification required dialog
                                 final shouldVerify = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
@@ -388,7 +619,6 @@ class VehicleDetailPage extends StatelessWidget {
 
                                 if (shouldVerify == true) {
                                   if (!context.mounted) return;
-                                  // Navigate to license verification page
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -401,14 +631,13 @@ class VehicleDetailPage extends StatelessWidget {
                                 return;
                               }
 
-                              // License is verified, proceed to booking
                               if (!context.mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => BookingPage(
-                                    vehicle: vehicle,
-                                    userId: userId,
+                                    vehicle: widget.vehicle,
+                                    userId: widget.userId,
                                   ),
                                 ),
                               );
@@ -423,7 +652,7 @@ class VehicleDetailPage extends StatelessWidget {
                         elevation: 3,
                       ),
                       child: Text(
-                        vehicle.isAvailable ? 'Book Now' : 'Currently Unavailable',
+                        widget.vehicle.isAvailable ? 'Book Now' : 'Currently Unavailable',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -442,24 +671,27 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingBar(int stars, double percentage) {
+  // ✅ Mini rating bar for summary
+  Widget _buildMiniRatingBar(int stars, int count, int total) {
+    double percentage = total > 0 ? count / total : 0;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Text(
             '$stars',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.star, size: 12, color: Colors.amber),
-          const SizedBox(width: 8),
+          const SizedBox(width: 2),
+          const Icon(Icons.star, size: 10, color: Colors.amber),
+          const SizedBox(width: 6),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: LinearProgressIndicator(
                 value: percentage,
-                minHeight: 6,
+                minHeight: 4,
                 backgroundColor: Colors.grey[300],
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   Color(0xFF1E88E5),
@@ -467,7 +699,100 @@ class VehicleDetailPage extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$count',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ✅ Review preview card
+  Widget _buildReviewPreview(Review review) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: const Color(0xFF1E88E5).withOpacity(0.1),
+                  child: Text(
+                    review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E88E5),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review.userName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          ...List.generate(5, (index) {
+                            return Icon(
+                              index < review.rating ? Icons.star : Icons.star_border,
+                              size: 14,
+                              color: index < review.rating ? Colors.amber : Colors.grey,
+                            );
+                          }),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('dd MMM yyyy').format(review.createdAt),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              review.comment,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[800],
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
