@@ -32,7 +32,7 @@ void main() async {
     print('🔵 APP: About to initialize Stripe');
     
     // ⚠️ REPLACE WITH YOUR ACTUAL PUBLISHABLE KEY
-    Stripe.publishableKey = 'pk_test_51Sh0vdDJJKjBR2ZQQa36I9pC9vqTdh7ZRsZYu34hSgNrMZxuO9TvXe3v1GaWOf8Sum0nxfwCt8wA5SdknSynXJiu007leYOhFH';  // REPLACE THIS!
+    // public key here
     
     // ✅ CRITICAL: Set merchant identifier for Android
     Stripe.merchantIdentifier = 'motorent.merchant';
