@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'screens/login_page.dart';
 import 'screens/customer/vehicle_listing_page.dart';
 import 'screens/admin/admin_dashboard_page.dart';
@@ -24,6 +25,25 @@ void main() async {
     print('✅ APP: Firebase initialized successfully!');
   } catch (e) {
     print('🔴 APP: Firebase initialization FAILED: $e');
+  }
+  
+  // ✅ STRIPE INITIALIZATION - FIXED VERSION
+  try {
+    print('🔵 APP: About to initialize Stripe');
+    
+    // ⚠️ REPLACE WITH YOUR ACTUAL PUBLISHABLE KEY
+    Stripe.publishableKey = 'pk_test_51Sh0vdDJJKjBR2ZQQa36I9pC9vqTdh7ZRsZYu34hSgNrMZxuO9TvXe3v1GaWOf8Sum0nxfwCt8wA5SdknSynXJiu007leYOhFH';  // REPLACE THIS!
+    
+    // ✅ CRITICAL: Set merchant identifier for Android
+    Stripe.merchantIdentifier = 'motorent.merchant';
+    
+    // ✅ CRITICAL: Apply settings to properly initialize
+    await Stripe.instance.applySettings();
+    
+    print('✅ APP: Stripe initialized successfully!');
+  } catch (e) {
+    print('🔴 APP: Stripe initialization FAILED: $e');
+    // Don't crash the app, just log the error
   }
   
   print('🔵 APP: Starting app');
@@ -93,11 +113,7 @@ class MotoRentApp extends StatelessWidget {
           ),
         ),
       ),
-      // home: const VehicleListingPage(), // For customer view
-      // home: const AdminDashboardPage(), // For admin view
-      //home: const OwnerDashboardPage(), //For Owner view
-      // Start with Login Page
       home: const LoginPage(),
     );
   }
-} 
+}

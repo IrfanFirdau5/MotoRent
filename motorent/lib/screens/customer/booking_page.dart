@@ -5,7 +5,7 @@ import '../../models/vehicle.dart';
 import '../../models/booking.dart';
 import '../../services/firebase_booking_service.dart';
 import '../../services/auth_service.dart';
-import 'booking_confirmation_page.dart';
+import 'stripe_payment_page.dart';
 
 class BookingPage extends StatefulWidget {
   final Vehicle vehicle;
@@ -210,15 +210,16 @@ class _BookingPageState extends State<BookingPage> {
 
       if (result['success']) {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BookingConfirmationPage(
-              booking: result['booking'] as Booking,
-              vehicle: widget.vehicle,
-            ),
+        Navigator.push(
+         context,
+        MaterialPageRoute(
+          builder: (context) => StripePaymentPage(
+            booking: result['booking'] as Booking,
+            vehicle: widget.vehicle,
           ),
+         ),
         );
+        
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
