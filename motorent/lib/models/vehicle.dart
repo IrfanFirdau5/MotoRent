@@ -12,6 +12,8 @@ class Vehicle {
   final String? ownerName;
   final double? rating;
   final int? reviewCount;
+  final double? monthlyMaintenance;  // NEW
+  final double? monthlyPayment;      // NEW
 
   Vehicle({
     required this.vehicleId,
@@ -27,6 +29,8 @@ class Vehicle {
     this.ownerName,
     this.rating,
     this.reviewCount,
+    this.monthlyMaintenance,
+    this.monthlyPayment,
   });
 
   // Factory constructor to create a Vehicle from JSON
@@ -47,6 +51,8 @@ class Vehicle {
       ownerName: json['owner_name'],
       rating: json['rating']?.toDouble(),
       reviewCount: json['review_count'],
+      monthlyMaintenance: (json['monthly_maintenance'] as num?)?.toDouble(),
+      monthlyPayment: (json['monthly_payment'] as num?)?.toDouble(),
     );
   }
 
@@ -66,10 +72,13 @@ class Vehicle {
       'owner_name': ownerName,
       'rating': rating,
       'review_count': reviewCount,
+      'monthly_maintenance': monthlyMaintenance,
+      'monthly_payment': monthlyPayment,
     };
   }
 
   bool get isAvailable => availabilityStatus.toLowerCase() == 'available';
 
   String get fullName => '$brand $model';
+  
 }
