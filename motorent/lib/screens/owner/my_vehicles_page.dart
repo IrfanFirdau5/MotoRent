@@ -1,17 +1,16 @@
 // FILE: motorent/lib/screens/owner/my_vehicles_page.dart
-// UPDATED VERSION - Replace your current file
+// FIXED - Star ratings now display correctly in owner's vehicle list
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/models/vehicle.dart';
-import '/services/firebase_vehicle_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/review_service.dart'; 
-import 'package:motorent/services/vehicle_service.dart';
+import 'edit_vehicle_page.dart';
+import 'owner_vehicle_overview_page.dart';
 
 class MyVehiclesPage extends StatefulWidget {
-  final dynamic ownerId; // Can accept int or String
+  final dynamic ownerId;
 
   const MyVehiclesPage({
     Key? key,
@@ -23,13 +22,10 @@ class MyVehiclesPage extends StatefulWidget {
 }
 
 class _MyVehiclesPageState extends State<MyVehiclesPage> {
-  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
-  final ReviewService _reviewService = ReviewService();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
-  Map<String, Map<String, dynamic>> _vehicleReviewData = {};
   @override
   void initState() {
     super.initState();
@@ -51,7 +47,7 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
 
       print('🔍 Loading vehicles for owner: ${currentUser.uid}');
 
-      // SIMPLIFIED QUERY - No complex filters
+      // Fetch vehicles
       final querySnapshot = await FirebaseFirestore.instance
           .collection('vehicles')
           .where('owner_id', isEqualTo: currentUser.uid)
@@ -59,7 +55,7 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
 
       print('📦 Raw query returned: ${querySnapshot.docs.length} documents');
 
-      // Filter out deleted vehicles in code instead of query
+      // Filter out deleted vehicles and convert to Vehicle objects
       final vehicles = querySnapshot.docs
           .where((doc) {
             final data = doc.data();
@@ -76,6 +72,11 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                   .toDate()
                   .toIso8601String();
             }
+            
+            // ✅ DEBUG: Print rating data
+            print('Vehicle ${data['brand']} ${data['model']}:');
+            print('  rating: ${data['rating']} (type: ${data['rating']?.runtimeType})');
+            print('  review_count: ${data['review_count']}');
             
             return Vehicle.fromJson(data);
           })
@@ -99,59 +100,59 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Future<void> _toggleAvailability(Vehicle vehicle) async {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
 
-  try {
-    final newStatus = vehicle.isAvailable ? 'unavailable' : 'available';
-    
-    print('🔄 Toggling availability to: $newStatus');
+    try {
+      final newStatus = vehicle.isAvailable ? 'unavailable' : 'available';
+      
+      print('🔄 Toggling availability to: $newStatus');
 
-    await FirebaseFirestore.instance
-        .collection('vehicles')
-        .doc(vehicle.vehicleId.toString())
-        .update({
-      'availability_status': newStatus,
-      'updated_at': FieldValue.serverTimestamp(),
-    });
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(vehicle.vehicleId.toString())
+          .update({
+        'availability_status': newStatus,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
-    print('✅ Status updated successfully');
+      print('✅ Status updated successfully');
 
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          vehicle.isAvailable
-              ? 'Vehicle marked as unavailable'
-              : 'Vehicle marked as available',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            vehicle.isAvailable
+                ? 'Vehicle marked as unavailable'
+                : 'Vehicle marked as available',
+          ),
+          backgroundColor: Colors.green,
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
+      );
 
-    _loadVehicles(); // Reload the list
+      _loadVehicles();
 
-  } catch (e) {
-    print('❌ Error updating status: $e');
+    } catch (e) {
+      print('❌ Error updating status: $e');
 
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to update status: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 
   Future<void> _showDeleteDialog(Vehicle vehicle) async {
     final confirmed = await showDialog<bool>(
@@ -188,55 +189,54 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Future<void> _deleteVehicle(Vehicle vehicle) async {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
-
-  try {
-    print('🗑️ Deleting vehicle: ${vehicle.vehicleId}');
-
-    // Soft delete - just mark as deleted
-    await FirebaseFirestore.instance
-        .collection('vehicles')
-        .doc(vehicle.vehicleId.toString())
-        .update({
-      'is_deleted': true,
-      'availability_status': 'unavailable',
-      'updated_at': FieldValue.serverTimestamp(),
-    });
-
-    print('✅ Vehicle deleted successfully');
-
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vehicle deleted successfully'),
-        backgroundColor: Colors.green,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
 
-    _loadVehicles(); // Reload the list
+    try {
+      print('🗑️ Deleting vehicle: ${vehicle.vehicleId}');
 
-  } catch (e) {
-    print('❌ Error deleting vehicle: $e');
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(vehicle.vehicleId.toString())
+          .update({
+        'is_deleted': true,
+        'availability_status': 'unavailable',
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
+      print('✅ Vehicle deleted successfully');
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to delete vehicle: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vehicle deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      _loadVehicles();
+
+    } catch (e) {
+      print('❌ Error deleting vehicle: $e');
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete vehicle: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 
   void _showVehicleOptions(Vehicle vehicle) {
     showModalBottomSheet(
@@ -259,19 +259,50 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                
+                // View Overview
                 ListTile(
-                  leading: const Icon(Icons.edit, color: Color(0xFF1E88E5)),
-                  title: const Text('Edit Details'),
+                  leading: const Icon(Icons.analytics, color: Color(0xFF1E88E5)),
+                  title: const Text('View Overview'),
+                  subtitle: const Text('Statistics and reviews'),
                   onTap: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Edit feature coming soon!'),
-                        backgroundColor: Colors.orange,
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OwnerVehicleOverviewPage(
+                          vehicle: vehicle,
+                          ownerId: widget.ownerId.toString(),
+                        ),
                       ),
                     );
                   },
                 ),
+                
+                // Edit Vehicle
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.green),
+                  title: const Text('Edit Vehicle'),
+                  subtitle: const Text('Update details and pricing'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditVehiclePage(
+                          vehicle: vehicle,
+                          ownerId: widget.ownerId,
+                        ),
+                      ),
+                    );
+                    
+                    if (result == true) {
+                      _loadVehicles();
+                    }
+                  },
+                ),
+                
+                // Toggle Availability
                 ListTile(
                   leading: Icon(
                     vehicle.isAvailable ? Icons.visibility_off : Icons.visibility,
@@ -280,27 +311,22 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                   title: Text(
                     vehicle.isAvailable ? 'Mark as Unavailable' : 'Mark as Available',
                   ),
+                  subtitle: Text(
+                    vehicle.isAvailable 
+                        ? 'Hide from customer listings'
+                        : 'Show in customer listings',
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _toggleAvailability(vehicle);
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.bar_chart, color: Colors.green),
-                  title: const Text('View Statistics'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Statistics feature coming soon!'),
-                        backgroundColor: Colors.orange,
-                      ),
-                    );
-                  },
-                ),
+                
+                // Delete Vehicle
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.red),
                   title: const Text('Delete Vehicle'),
+                  subtitle: const Text('Permanently remove this vehicle'),
                   onTap: () {
                     Navigator.pop(context);
                     _showDeleteDialog(vehicle);
@@ -399,13 +425,16 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   }
 
   Widget _buildVehicleCard(Vehicle vehicle) {
+    // ✅ FIXED: Proper rating calculation with null safety
+    final rating = vehicle.rating;
+    final hasRating = rating != null && rating > 0;
+    final displayRating = hasRating ? rating : 0.0;
+    final reviewCount = vehicle.reviewCount ?? 0;
 
-    final reviewData = _vehicleReviewData[vehicle.vehicleId.toString()];
-    final actualRating = reviewData?['rating'] as double?;
-    final actualCount = reviewData?['count'] as int? ?? 0;
-    
-    final hasRating = actualRating != null && actualRating > 0;
-    final reviewCount = actualCount;
+    print('🎨 Rendering card for ${vehicle.fullName}:');
+    print('   hasRating: $hasRating');
+    print('   displayRating: $displayRating');
+    print('   reviewCount: $reviewCount');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -515,32 +544,78 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
                 ),
                 const SizedBox(height: 12),
                 
-                // Rating
-                if (vehicle.rating != null && vehicle.rating! > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star, size: 18, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          vehicle.rating!.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                // ✅ FIXED: Star Rating Display with Better Logic
+                if (hasRating) ...[
+                  Row(
+                    children: [
+                      // Generate 5 stars with proper half-star logic
+                      ...List.generate(5, (index) {
+                        if (index < displayRating.floor()) {
+                          // Full star
+                          return const Icon(
+                            Icons.star,
+                            size: 18,
+                            color: Colors.amber,
+                          );
+                        } else if (index < displayRating.ceil() && 
+                                   (displayRating - displayRating.floor()) >= 0.5) {
+                          // Half star (only if decimal part >= 0.5)
+                          return const Icon(
+                            Icons.star_half,
+                            size: 18,
+                            color: Colors.amber,
+                          );
+                        } else {
+                          // Empty star
+                          return Icon(
+                            Icons.star_border,
+                            size: 18,
+                            color: Colors.grey[400],
+                          );
+                        }
+                      }),
+                      const SizedBox(width: 8),
+                      // Rating number
+                      Text(
+                        displayRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '(${vehicle.reviewCount ?? 0} reviews)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Review count
+                      Text(
+                        '($reviewCount ${reviewCount == 1 ? 'review' : 'reviews'})',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ] else ...[
+                  // No ratings yet - show empty stars
+                  Row(
+                    children: [
+                      ...List.generate(5, (index) {
+                        return Icon(
+                          Icons.star_border,
+                          size: 18,
+                          color: Colors.grey[400],
+                        );
+                      }),
+                      const SizedBox(width: 8),
+                      Text(
+                        'No reviews yet',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
 
                 const SizedBox(height: 16),
                 
