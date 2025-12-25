@@ -1,10 +1,11 @@
-// FILE: lib/screens/owner/owner_bookings_page.dart
-// FIXED VERSION - Shows all bookings properly
+// FILE: motorent/lib/screens/owner/owner_bookings_page.dart
+// ✅ COMPLETE VERSION with Invoice Access
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../services/firebase_booking_service.dart';
+import '../../widgets/invoice_access_widget.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -61,7 +62,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
 
       print('🔍 Loading bookings for owner: ${currentUser.uid}');
       
-      // Fetch bookings directly from Firestore with simplified query
       final querySnapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('owner_id', isEqualTo: currentUser.uid)
@@ -78,12 +78,10 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         return;
       }
 
-      // Convert to Booking objects
       final bookings = querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['booking_id'] = doc.id;
         
-        // Handle Timestamp conversions
         if (data['created_at'] is Timestamp) {
           data['created_at'] = (data['created_at'] as Timestamp)
               .toDate()
@@ -134,7 +132,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         .where((b) => b.bookingStatus.toLowerCase() == 'completed')
         .toList();
 
-    // Sort by date
     _pendingBookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _confirmedBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _completedBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
@@ -178,7 +175,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
 
     if (confirmed != true) return;
 
-    // Show loading
     if (!mounted) return;
     showDialog(
       context: context,
@@ -194,7 +190,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       );
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -215,7 +211,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -285,7 +281,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
 
     if (confirmed != true) return;
 
-    // Show loading
     if (!mounted) return;
     showDialog(
       context: context,
@@ -302,7 +297,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       );
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -322,7 +317,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -415,7 +410,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Pending', style: const TextStyle(color: Colors.white)),
+                  const Text('Pending', style: TextStyle(color: Colors.white)),
                   if (_pendingBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -444,7 +439,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Confirmed', style: const TextStyle(color: Colors.white)),
+                  const Text('Confirmed', style: TextStyle(color: Colors.white)),
                   if (_confirmedBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -473,7 +468,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Completed', style: const TextStyle(color: Colors.white)),
+                  const Text('Completed', style: TextStyle(color: Colors.white)),
                   if (_completedBookings.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -603,10 +598,15 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Vehicle Name with Icon
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Icon(
+                  Icons.directions_car,
+                  size: 24,
+                  color: Color(0xFF1E88E5),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     booking.vehicleName ?? 'Unknown Vehicle',
@@ -647,22 +647,15 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                   booking.userName ?? 'Unknown',
                   style: const TextStyle(fontSize: 15),
                 ),
+                const SizedBox(width: 16),
+                const Icon(Icons.phone, size: 18, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(
+                  booking.userPhone ?? 'N/A',
+                  style: const TextStyle(fontSize: 15),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-
-            // Phone
-            if (booking.userPhone != null)
-              Row(
-                children: [
-                  const Icon(Icons.phone, size: 18, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text(
-                    booking.userPhone!,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                ],
-              ),
             const SizedBox(height: 8),
 
             // Dates
@@ -671,21 +664,31 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                 const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
                 const SizedBox(width: 8),
                 Text(
-                  '${DateFormat('dd MMM').format(booking.startDate)} - ${DateFormat('dd MMM yyyy').format(booking.endDate)}',
+                  '${DateFormat('dd MMM').format(booking.startDate)} - ${DateFormat('dd MMM yyyy').format(booking.endDate)} (${booking.duration} day${booking.duration > 1 ? 's' : ''})',
                   style: const TextStyle(fontSize: 15),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-            // Duration
+            // Price
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.access_time, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
+                const Text(
+                  'Total Amount',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
                 Text(
-                  '${booking.duration} day${booking.duration > 1 ? 's' : ''}',
-                  style: const TextStyle(fontSize: 15),
+                  'RM ${booking.totalPrice.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E88E5),
+                  ),
                 ),
               ],
             ),
@@ -734,29 +737,115 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
               ),
             ],
 
-            const SizedBox(height: 12),
+            // ✅ Invoice Section (if payment authorized or captured)
+            if (booking.paymentStatus == 'authorized' || 
+                booking.paymentStatus == 'captured') ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              
+              InvoiceAccessWidget(
+                bookingId: booking.bookingId.toString(),
+                isOwner: true,
+              ),
+              
+              const SizedBox(height: 12),
+              const Divider(),
+            ],
 
-            // Price
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total Amount',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
+            // Payment Status Info
+            if (booking.paymentStatus != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: booking.paymentStatus == 'authorized'
+                      ? Colors.orange[50]
+                      : Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: booking.paymentStatus == 'authorized'
+                        ? Colors.orange[200]!
+                        : Colors.green[200]!,
                   ),
                 ),
-                Text(
-                  'RM ${booking.totalPrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E88E5),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          booking.paymentStatus == 'authorized'
+                              ? Icons.schedule
+                              : Icons.check_circle,
+                          color: booking.paymentStatus == 'authorized'
+                              ? Colors.orange[900]
+                              : Colors.green[900],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            booking.paymentStatus == 'authorized'
+                                ? 'Payment Status: Authorized (Funds Held)'
+                                : 'Payment Status: Captured',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: booking.paymentStatus == 'authorized'
+                                  ? Colors.orange[900]
+                                  : Colors.green[900],
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (booking.paymentStatus == 'authorized') ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, 
+                            color: Colors.orange[800], 
+                            size: 16
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Awaiting your approval',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (booking.paymentStatus == 'captured') ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, 
+                            color: Colors.green[800], 
+                            size: 16
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Booking Confirmed',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
 
             // Action Buttons
             if (type == 'pending') ...[
@@ -783,7 +872,7 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text(
-                        'Approve',
+                        'Approve Booking',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

@@ -1,15 +1,16 @@
 // FILE: motorent/lib/services/firebase_booking_service.dart
-// CRITICAL FIX: Bookings now start as 'pending' requiring owner approval
-// Driver requests are properly created for bookings that need drivers
+// ✅ UPDATED: Payment authorization flow with invoice generation
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
+import 'stripe_payment_service.dart';
 
 class FirebaseBookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _bookingsCollection = 'bookings';
+  final StripePaymentService _stripeService = StripePaymentService();
 
-  // Create a new booking - ✅ FIXED to start as 'pending' and create driver request
+  // ✅ UPDATED: Create booking with payment_pending status
   Future<Map<String, dynamic>> createBooking({
     required String userId,
     required String userName,
@@ -43,7 +44,7 @@ class FirebaseBookingService {
         };
       }
 
-      // ✅ CRITICAL FIX: Create booking with 'pending' status (NOT 'confirmed')
+      // ✅ Create booking with payment_pending status (awaiting payment)
       final bookingData = {
         'user_id': userId,
         'user_name': userName,
@@ -55,14 +56,16 @@ class FirebaseBookingService {
         'start_date': Timestamp.fromDate(startDate),
         'end_date': Timestamp.fromDate(endDate),
         'total_price': totalPrice,
-        'booking_status': 'pending', // ✅ FIXED: Changed from 'confirmed' to 'pending'
+        'booking_status': 'payment_pending', // ✅ Waiting for payment
+        'payment_status': 'pending', // ✅ Payment not yet made
+        'payment_intent_id': null, // ✅ Will be updated after payment
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
         'need_driver': needDriver,
         'driver_price': driverPrice,
-        'driver_id': null, // ✅ Driver not assigned yet
+        'driver_id': null,
         'driver_name': null,
-        'driver_request_status': needDriver ? 'pending' : null, // ✅ Pending driver assignment
+        'driver_request_status': needDriver ? 'pending' : null,
         'driver_job_status': null,
         'pickup_location': pickupLocation,
         'dropoff_location': dropoffLocation,
@@ -70,7 +73,7 @@ class FirebaseBookingService {
 
       final docRef = await _firestore.collection(_bookingsCollection).add(bookingData);
 
-      print('✅ Booking created with ID: ${docRef.id}, Status: pending, Need Driver: $needDriver');
+      print('✅ Booking created with ID: ${docRef.id}, Status: payment_pending');
 
       // Create the Booking object to return
       final booking = Booking(
@@ -81,7 +84,7 @@ class FirebaseBookingService {
         startDate: startDate,
         endDate: endDate,
         totalPrice: totalPrice,
-        bookingStatus: 'pending', // ✅ FIXED: Changed from 'confirmed' to 'pending'
+        bookingStatus: 'payment_pending',
         createdAt: DateTime.now(),
         userName: userName,
         vehicleName: vehicleName,
@@ -90,19 +93,179 @@ class FirebaseBookingService {
         driverPrice: driverPrice,
         driverId: null,
         driverName: null,
+        paymentStatus: 'pending',
+        paymentIntentId: null,
       );
 
       return {
         'success': true,
         'booking_id': docRef.id,
         'booking': booking,
-        'message': 'Booking request submitted! Awaiting owner approval.',
+        'message': 'Booking created! Please proceed to payment.',
       };
     } catch (e) {
       print('❌ Error creating booking: $e');
       return {
         'success': false,
         'message': 'Failed to create booking: $e',
+      };
+    }
+  }
+
+  // ✅ NEW: Update booking after payment authorization
+  Future<bool> updatePaymentAuthorization({
+    required String bookingId,
+    required String paymentIntentId,
+  }) async {
+    try {
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'payment_intent_id': paymentIntentId,
+        'payment_status': 'authorized', // Funds are held
+        'booking_status': 'pending', // Awaiting owner approval
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Payment authorization recorded for booking: $bookingId');
+      print('   Payment Intent ID: $paymentIntentId');
+      print('   Status: pending (awaiting owner approval)');
+      return true;
+    } catch (e) {
+      print('❌ Error updating payment authorization: $e');
+      return false;
+    }
+  }
+
+  // ✅ UPDATED: Approve booking (by owner) - This captures the held payment
+  Future<Map<String, dynamic>> approveBooking(String bookingId) async {
+    try {
+      print('🔍 Fetching booking: $bookingId');
+      
+      // Get the booking
+      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+      
+      if (!bookingDoc.exists) {
+        return {
+          'success': false,
+          'message': 'Booking not found',
+        };
+      }
+
+      final bookingData = bookingDoc.data()!;
+      final needDriver = bookingData['need_driver'] ?? false;
+      final paymentIntentId = bookingData['payment_intent_id'] as String?;
+      final paymentStatus = bookingData['payment_status'] as String?;
+
+      print('📋 Booking details:');
+      print('   Payment Intent ID: $paymentIntentId');
+      print('   Payment Status: $paymentStatus');
+      print('   Need Driver: $needDriver');
+
+      // ✅ Capture the held payment
+      if (paymentIntentId != null && paymentStatus == 'authorized') {
+        print('💰 Attempting to capture payment...');
+        
+        final captureResult = await _stripeService.capturePayment(paymentIntentId);
+        
+        if (captureResult == null) {
+          print('❌ Failed to capture payment');
+          return {
+            'success': false,
+            'message': 'Failed to capture payment. Please try again.',
+          };
+        }
+        
+        print('✅ Payment captured successfully!');
+        print('   Amount: ${captureResult['amount_received']} ${captureResult['currency']}');
+      } else if (paymentIntentId == null) {
+        print('⚠️  No payment intent ID found - skipping capture');
+      } else if (paymentStatus != 'authorized') {
+        print('⚠️  Payment status is $paymentStatus - skipping capture');
+      }
+
+      // Update booking status to confirmed
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'booking_status': 'confirmed',
+        'payment_status': 'captured', // ✅ Payment captured
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Booking $bookingId approved and confirmed');
+
+      // If driver is needed, the driver_request_status is already 'pending'
+      if (needDriver) {
+        print('✅ Driver request is now visible to drivers (status: pending)');
+      }
+
+      return {
+        'success': true,
+        'message': needDriver 
+            ? 'Booking approved! Payment captured. Driver request is now visible to drivers.'
+            : 'Booking approved! Payment captured successfully.',
+      };
+    } catch (e) {
+      print('❌ Error approving booking: $e');
+      return {
+        'success': false,
+        'message': 'Failed to approve booking: $e',
+      };
+    }
+  }
+
+  // ✅ UPDATED: Reject booking (by owner) - This cancels the held payment
+  Future<Map<String, dynamic>> rejectBooking(String bookingId, String reason) async {
+    try {
+      print('🔍 Rejecting booking: $bookingId');
+      
+      // Get the booking
+      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+      
+      if (!bookingDoc.exists) {
+        return {
+          'success': false,
+          'message': 'Booking not found',
+        };
+      }
+
+      final bookingData = bookingDoc.data()!;
+      final paymentIntentId = bookingData['payment_intent_id'] as String?;
+      final paymentStatus = bookingData['payment_status'] as String?;
+
+      print('📋 Booking details:');
+      print('   Payment Intent ID: $paymentIntentId');
+      print('   Payment Status: $paymentStatus');
+
+      // ✅ Cancel the held payment if it was authorized
+      if (paymentIntentId != null && paymentStatus == 'authorized') {
+        print('💳 Attempting to cancel payment authorization...');
+        
+        final cancelled = await _stripeService.cancelPaymentIntent(paymentIntentId);
+        
+        if (cancelled) {
+          print('✅ Payment authorization cancelled - funds released to customer');
+        } else {
+          print('⚠️  Failed to cancel payment - manual intervention may be required');
+        }
+      }
+
+      // Update booking status
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'booking_status': 'rejected',
+        'payment_status': 'cancelled', // ✅ Payment cancelled
+        'rejection_reason': reason,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Booking rejected successfully');
+
+      return {
+        'success': true,
+        'message': 'Booking rejected and payment authorization cancelled',
+      };
+    } catch (e) {
+      print('❌ Error rejecting booking: $e');
+      return {
+        'success': false,
+        'message': 'Failed to reject booking: $e',
       };
     }
   }
@@ -178,74 +341,7 @@ class FirebaseBookingService {
     }
   }
 
-  // ✅ NEW: Approve booking (by owner) - This creates driver requests
-  Future<Map<String, dynamic>> approveBooking(String bookingId) async {
-    try {
-      // Get the booking
-      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
-      
-      if (!bookingDoc.exists) {
-        return {
-          'success': false,
-          'message': 'Booking not found',
-        };
-      }
-
-      final bookingData = bookingDoc.data()!;
-      final needDriver = bookingData['need_driver'] ?? false;
-
-      // Update booking status to confirmed
-      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
-        'booking_status': 'confirmed',
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      print('✅ Booking $bookingId approved. Need driver: $needDriver');
-
-      // If driver is needed, the driver_request_status is already 'pending'
-      // Drivers will see this in their pending requests automatically
-      if (needDriver) {
-        print('✅ Driver request is now visible to drivers (status: pending)');
-      }
-
-      return {
-        'success': true,
-        'message': needDriver 
-            ? 'Booking approved! Driver request is now visible to drivers.'
-            : 'Booking approved successfully!',
-      };
-    } catch (e) {
-      print('❌ Error approving booking: $e');
-      return {
-        'success': false,
-        'message': 'Failed to approve booking: $e',
-      };
-    }
-  }
-
-  // ✅ NEW: Reject booking (by owner)
-  Future<Map<String, dynamic>> rejectBooking(String bookingId, String reason) async {
-    try {
-      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
-        'booking_status': 'rejected',
-        'rejection_reason': reason,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      return {
-        'success': true,
-        'message': 'Booking rejected',
-      };
-    } catch (e) {
-      print('❌ Error rejecting booking: $e');
-      return {
-        'success': false,
-        'message': 'Failed to reject booking: $e',
-      };
-    }
-  }
-
-  // Update booking status (generic - for backward compatibility)
+  // Update booking status (generic)
   Future<bool> updateBookingStatus(
     String bookingId,
     String newStatus, {
@@ -277,8 +373,24 @@ class FirebaseBookingService {
   // Cancel booking (by customer)
   Future<bool> cancelBooking(String bookingId, String cancellationReason) async {
     try {
+      // Get booking to check payment status
+      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+      
+      if (bookingDoc.exists) {
+        final bookingData = bookingDoc.data()!;
+        final paymentIntentId = bookingData['payment_intent_id'] as String?;
+        final paymentStatus = bookingData['payment_status'] as String?;
+        
+        // If payment was authorized but not captured, cancel it
+        if (paymentIntentId != null && paymentStatus == 'authorized') {
+          print('💳 Cancelling authorized payment for customer cancellation...');
+          await _stripeService.cancelPaymentIntent(paymentIntentId);
+        }
+      }
+      
       await _firestore.collection(_bookingsCollection).doc(bookingId).update({
         'booking_status': 'cancelled',
+        'payment_status': 'cancelled',
         'cancellation_reason': cancellationReason,
         'updated_at': FieldValue.serverTimestamp(),
       });
@@ -301,7 +413,7 @@ class FirebaseBookingService {
       final querySnapshot = await _firestore
           .collection(_bookingsCollection)
           .where('vehicle_id', isEqualTo: vehicleId)
-          .where('booking_status', whereIn: ['pending', 'confirmed'])
+          .where('booking_status', whereIn: ['pending', 'confirmed', 'payment_pending'])
           .get();
 
       // Check for date overlaps

@@ -1,5 +1,5 @@
 // FILE: lib/models/booking.dart
-// FIXED VERSION - Handles both String and int types
+// ✅ UPDATED: Added payment tracking fields
 
 class Booking {
   final dynamic bookingId;
@@ -9,7 +9,7 @@ class Booking {
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
-  final String bookingStatus; // pending, confirmed, cancelled, completed
+  final String bookingStatus; // payment_pending, pending, confirmed, cancelled, completed, rejected
   final DateTime createdAt;
   final String? userName;
   final String? vehicleName;
@@ -18,6 +18,10 @@ class Booking {
   final double? driverPrice;
   final int? driverId;
   final String? driverName;
+  
+  // ✅ NEW: Payment tracking fields
+  final String? paymentStatus; // pending, authorized, captured, cancelled, refunded
+  final String? paymentIntentId; // Stripe Payment Intent ID
 
   Booking({
     required this.bookingId,
@@ -36,6 +40,8 @@ class Booking {
     this.driverPrice,
     this.driverId,
     this.driverName,
+    this.paymentStatus,
+    this.paymentIntentId,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -66,6 +72,8 @@ class Booking {
           ? (json['driver_id'] is int ? json['driver_id'] : int.tryParse(json['driver_id'].toString()))
           : null,
       driverName: json['driver_name']?.toString(),
+      paymentStatus: json['payment_status']?.toString(),
+      paymentIntentId: json['payment_intent_id']?.toString(),
     );
   }
 
@@ -87,6 +95,8 @@ class Booking {
       'driver_price': driverPrice,
       'driver_id': driverId,
       'driver_name': driverName,
+      'payment_status': paymentStatus,
+      'payment_intent_id': paymentIntentId,
     };
   }
 
@@ -94,16 +104,37 @@ class Booking {
 
   String get statusDisplay {
     switch (bookingStatus.toLowerCase()) {
+      case 'payment_pending':
+        return 'Payment Pending';
       case 'pending':
-        return 'Pending';
+        return 'Pending Approval';
       case 'confirmed':
         return 'Confirmed';
       case 'cancelled':
         return 'Cancelled';
       case 'completed':
         return 'Completed';
+      case 'rejected':
+        return 'Rejected';
       default:
         return bookingStatus;
+    }
+  }
+
+  String get paymentStatusDisplay {
+    switch (paymentStatus?.toLowerCase()) {
+      case 'pending':
+        return 'Payment Pending';
+      case 'authorized':
+        return 'Payment Authorized';
+      case 'captured':
+        return 'Payment Completed';
+      case 'cancelled':
+        return 'Payment Cancelled';
+      case 'refunded':
+        return 'Refunded';
+      default:
+        return 'Unknown';
     }
   }
 
@@ -113,4 +144,18 @@ class Booking {
     }
     return totalPrice;
   }
+
+  // ✅ Check if payment is awaiting capture
+  bool get isPaymentHeld => 
+      paymentStatus?.toLowerCase() == 'authorized' && 
+      bookingStatus.toLowerCase() == 'pending';
+
+  // ✅ Check if payment was captured
+  bool get isPaymentCaptured => 
+      paymentStatus?.toLowerCase() == 'captured';
+
+  // ✅ Check if booking can be approved (has authorized payment)
+  bool get canBeApproved => 
+      bookingStatus.toLowerCase() == 'pending' && 
+      paymentStatus?.toLowerCase() == 'authorized';
 }

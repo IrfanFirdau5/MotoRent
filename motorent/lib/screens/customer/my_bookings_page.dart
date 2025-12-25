@@ -1,5 +1,5 @@
 // FILE: motorent/lib/screens/customer/my_bookings_page.dart
-// ✅ ENHANCED: Better review button flow with proper integration
+// ✅ COMPLETE VERSION with Invoice Access for Customer
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -12,8 +12,9 @@ import '../../services/firebase_vehicle_service.dart';
 import '../../services/review_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/customer_drawer.dart';
+import '../../widgets/invoice_access_widget.dart';
 import 'vehicle_listing_page.dart';
-import 'submit_review_page.dart'; // ✅ Changed from add_review_page
+import 'submit_review_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
   final String userId;
@@ -43,10 +44,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // ✅ Track which bookings have reviews (booking_id -> has_review)
   Map<String, bool> _reviewStatus = {};
-  
-  // ✅ Cache vehicles to avoid repeated fetches
   Map<String, Vehicle?> _vehicleCache = {};
 
   @override
@@ -83,12 +81,10 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     try {
       print('🔍 Loading bookings for user: ${widget.userId}');
       
-      // Fetch bookings from Firebase
       final bookings = await _bookingService.fetchUserBookings(widget.userId);
       
       print('✅ Loaded ${bookings.length} bookings');
       
-      // ✅ Check review status for each completed booking
       for (var booking in bookings) {
         if (booking.bookingStatus.toLowerCase() == 'completed') {
           try {
@@ -229,9 +225,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     }
   }
 
-  // ✅ ENHANCED: Fetch vehicle for review
   Future<Vehicle?> _getVehicleForReview(String vehicleId) async {
-    // Check cache first
     if (_vehicleCache.containsKey(vehicleId)) {
       return _vehicleCache[vehicleId];
     }
@@ -240,7 +234,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       print('🔍 Fetching vehicle for review: $vehicleId');
       final vehicle = await _vehicleService.fetchVehicleById(vehicleId);
       
-      // Cache it
       _vehicleCache[vehicleId] = vehicle;
       
       return vehicle;
@@ -250,9 +243,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     }
   }
 
-  // ✅ ENHANCED: Write review with better error handling
   Future<void> _writeReview(Booking booking) async {
-    // Show loading while fetching vehicle
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -264,11 +255,10 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     try {
       print('📝 Preparing to write review for booking: ${booking.bookingId}');
       
-      // Fetch the vehicle details
       final vehicle = await _getVehicleForReview(booking.vehicleId);
       
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       if (vehicle == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -282,26 +272,23 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
       print('✅ Vehicle loaded: ${vehicle.fullName}');
       
-      // Navigate to review page
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => SubmitReviewPage(
             vehicle: vehicle,
-            bookingId: booking.bookingId.toString(), // ✅ Convert to String
+            bookingId: booking.bookingId.toString(),
             userId: widget.userId,
           ),
         ),
       );
 
-      // If review was submitted successfully, reload bookings
       if (result == true) {
         print('✅ Review submitted, reloading bookings...');
         _loadBookings();
         
         if (!mounted) return;
         
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(
@@ -322,7 +309,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       print('❌ Error preparing review: $e');
       
       if (!mounted) return;
-      Navigator.pop(context); // Close loading if still open
+      Navigator.pop(context);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -497,7 +484,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         booking.bookingStatus.toLowerCase() != 'cancelled' &&
         booking.startDate.isAfter(DateTime.now().add(const Duration(days: 1)));
     
-    // ✅ ENHANCED: Better review status checking
     final canReview = type == 'past' && 
         booking.bookingStatus.toLowerCase() == 'completed' &&
         !(_reviewStatus[booking.bookingId.toString()] ?? false);
@@ -726,8 +712,24 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ],
             ),
 
-            // ✅ ENHANCED: Review button for completed bookings
+            // ✅ Invoice Section
+            if (booking.paymentStatus == 'authorized' || 
+                booking.paymentStatus == 'captured') ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              
+              InvoiceAccessWidget(
+                bookingId: booking.bookingId.toString(),
+                isOwner: false, // Customer
+              ),
+              
+              const SizedBox(height: 12),
+            ],
+
+            // Review button
             if (canReview) ...[
+              const Divider(),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -753,8 +755,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               ),
             ],
 
-            // ✅ ENHANCED: Already reviewed indicator
             if (hasReviewed) ...[
+              const Divider(),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,

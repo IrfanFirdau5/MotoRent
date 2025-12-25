@@ -1,22 +1,79 @@
+// FILE: motorent/lib/screens/customer/booking_confirmation_page.dart
+// ✅ UPDATED: Shows pending status and invoice options
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
 import '../../models/booking.dart';
 import '../../models/vehicle.dart';
+import '../../services/invoice_service.dart';
 import 'my_bookings_page.dart';
 import 'vehicle_listing_page.dart';
 
 class BookingConfirmationPage extends StatelessWidget {
   final Booking booking;
   final Vehicle vehicle;
+  final File? invoiceFile; // ✅ NEW: Invoice file
 
   const BookingConfirmationPage({
     Key? key,
     required this.booking,
     required this.vehicle,
+    this.invoiceFile,
   }) : super(key: key);
+
+  Future<void> _shareInvoice(BuildContext context) async {
+    if (invoiceFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invoice not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await InvoiceService().shareInvoice(invoiceFile!);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing invoice: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _printInvoice(BuildContext context) async {
+    if (invoiceFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invoice not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await InvoiceService().printInvoice(invoiceFile!);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error printing invoice: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isPending = booking.bookingStatus.toLowerCase() == 'pending';
+    
     return WillPopScope(
       onWillPop: () async {
         // Prevent back button, force user to use buttons
@@ -24,7 +81,7 @@ class BookingConfirmationPage extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Booking Confirmed'),
+          title: Text(isPending ? 'Payment Authorized' : 'Booking Confirmed'),
           backgroundColor: const Color(0xFF1E88E5),
           foregroundColor: Colors.white,
           automaticallyImplyLeading: false, // Remove back button
@@ -47,37 +104,39 @@ class BookingConfirmationPage extends StatelessWidget {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: isPending ? Colors.orange[50] : Colors.green[50],
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
+                        color: (isPending ? Colors.orange : Colors.green).withOpacity(0.3),
                         spreadRadius: 3,
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.check_circle,
+                  child: Icon(
+                    isPending ? Icons.schedule : Icons.check_circle,
                     size: 80,
-                    color: Colors.green,
+                    color: isPending ? Colors.orange : Colors.green,
                   ),
                 ),
               ),
               const SizedBox(height: 20),
 
               // Success Message
-              const Text(
-                'Booking Confirmed!',
-                style: TextStyle(
+              Text(
+                isPending ? 'Payment Authorized!' : 'Booking Confirmed!',
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Your booking has been successfully confirmed',
+                isPending
+                    ? 'Payment authorized. Awaiting owner confirmation.'
+                    : 'Your booking has been successfully confirmed',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -91,15 +150,17 @@ class BookingConfirmationPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                  gradient: LinearGradient(
+                    colors: isPending 
+                        ? [Colors.orange, Colors.deepOrange]
+                        : [const Color(0xFF1E88E5), const Color(0xFF1565C0)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: (isPending ? Colors.orange : Colors.blue).withOpacity(0.3),
                       spreadRadius: 1,
                       blurRadius: 8,
                       offset: const Offset(0, 3),
@@ -138,8 +199,8 @@ class BookingConfirmationPage extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.check_circle,
+                          Icon(
+                            isPending ? Icons.schedule : Icons.check_circle,
                             size: 16,
                             color: Colors.white,
                           ),
@@ -159,6 +220,66 @@ class BookingConfirmationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // ✅ Payment Status Info (if pending)
+              if (isPending) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.orange[900], size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Awaiting Owner Approval',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange[900],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Your payment has been authorized and funds are securely held. The vehicle owner will review your booking and approve it shortly. You will be notified once approved.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.orange[800],
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.orange[900], size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Payment will only be charged after approval',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Booking Details Card
               Container(
@@ -372,16 +493,90 @@ class BookingConfirmationPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
+
+              // ✅ Invoice Section (if available)
+              if (invoiceFile != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.receipt_long, color: Colors.green[900], size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Invoice Generated',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[900],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Your invoice has been generated and sent to both you and the vehicle owner.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.green[800],
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _shareInvoice(context),
+                              icon: const Icon(Icons.share, size: 18),
+                              label: const Text('Share'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.green[900],
+                                side: BorderSide(color: Colors.green[700]!),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _printInvoice(context),
+                              icon: const Icon(Icons.print, size: 18),
+                              label: const Text('Print'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.green[900],
+                                side: BorderSide(color: Colors.green[700]!),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Important Information Box
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
+                  color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange[200]!),
+                  border: Border.all(color: Colors.blue[200]!),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,7 +585,7 @@ class BookingConfirmationPage extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.info,
-                          color: Colors.orange[800],
+                          color: Colors.blue[800],
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -399,16 +594,22 @@ class BookingConfirmationPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange[800],
+                            color: Colors.blue[800],
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     _buildInfoPoint('A confirmation email has been sent to your registered email address'),
-                    _buildInfoPoint('Please arrive 15 minutes before your pickup time'),
-                    _buildInfoPoint('Bring your ID and driver\'s license for verification'),
-                    if (booking.needDriver)
+                    _buildInfoPoint('Invoice has been sent to both you and the vehicle owner'),
+                    if (isPending) ...[
+                      _buildInfoPoint('You will be notified when the owner approves your booking'),
+                      _buildInfoPoint('Payment will only be charged after approval'),
+                    ] else ...[
+                      _buildInfoPoint('Please arrive 15 minutes before your pickup time'),
+                      _buildInfoPoint('Bring your ID and driver\'s license for verification'),
+                    ],
+                    if (booking.needDriver && !isPending)
                       _buildInfoPoint('Driver details will be sent 24 hours before pickup'),
                     _buildInfoPoint('You can view or manage this booking in "My Bookings"'),
                   ],
@@ -483,23 +684,6 @@ class BookingConfirmationPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: () {
-                      // TODO: Implement share functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Share functionality coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.share),
-                    label: const Text('Share Booking Details'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey[700],
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -555,7 +739,7 @@ class BookingConfirmationPage extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: Colors.orange[800],
+              color: Colors.blue[800],
               shape: BoxShape.circle,
             ),
           ),
