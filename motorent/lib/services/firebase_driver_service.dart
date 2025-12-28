@@ -173,12 +173,12 @@ class FirebaseDriverService {
       final requests = querySnapshot.docs.map((doc) {
         final data = doc.data();
         
-        print('   ✓ Booking ID: ${doc.id}'); // ✅ Should show the real Firestore ID
+        print('   ✓ Booking ID: ${doc.id}');
         
         return RideRequest(
-          requestId: '', // ✅ Empty string
-          driverId: driverId, // ✅ String
-          bookingId: doc.id, // ✅ CRITICAL: Firestore document ID
+          requestId: '',
+          driverId: driverId,
+          bookingId: doc.id,
           customerName: data['user_name'] ?? '',
           customerPhone: data['user_phone'] ?? '',
           vehicleName: data['vehicle_name'] ?? '',
@@ -198,7 +198,6 @@ class FirebaseDriverService {
 
   // Respond to ride request (accept/reject) - overload for int
   Future<void> respondToRequestInt(int requestId, bool accept) async {
-    // This is kept for backward compatibility but should use string version
     await respondToRequest(requestId.toString(), '', accept);
   }
 
@@ -206,18 +205,16 @@ class FirebaseDriverService {
   Future<void> respondToRequest(String bookingId, String driverId, bool accept) async {
     try {
       print('🔵 Driver responding to request');
-      print('   Firestore Booking ID: $bookingId'); // ✅ Should now be the real ID
+      print('   Firestore Booking ID: $bookingId');
       print('   Accept: $accept');
       print('   Driver ID: $driverId');
       
-      // ✅ VALIDATION: Check if bookingId looks valid
       if (bookingId.isEmpty || bookingId == '0' || bookingId == 'null') {
         print('❌ ERROR: Invalid booking ID: "$bookingId"');
         throw Exception('Invalid booking ID. This should be the Firestore document ID.');
       }
       
       if (accept) {
-        // Accept the request
         await _firestore.collection(_bookingsCollection).doc(bookingId).update({
           'driver_id': driverId,
           'driver_request_status': 'accepted',
@@ -226,7 +223,6 @@ class FirebaseDriverService {
 
         print('   ✅ Booking updated with driver ID');
 
-        // Create a driver job entry
         final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
         
         if (!bookingDoc.exists) {
@@ -238,7 +234,7 @@ class FirebaseDriverService {
 
         final jobData = {
           'driver_id': driverId,
-          'booking_id': bookingId, // ✅ Store the actual Firestore document ID
+          'booking_id': bookingId,
           'customer_name': bookingData['user_name'],
           'customer_phone': bookingData['user_phone'],
           'vehicle_name': bookingData['vehicle_name'],
@@ -261,7 +257,6 @@ class FirebaseDriverService {
         print('   Payment: RM ${jobData['payment']}');
         
       } else {
-        // Reject the request
         await _firestore.collection(_bookingsCollection).doc(bookingId).update({
           'driver_request_status': 'rejected',
           'updated_at': FieldValue.serverTimestamp(),
@@ -286,7 +281,6 @@ class FirebaseDriverService {
       final startOfToday = DateTime(now.year, now.month, now.day);
       final endOfToday = startOfToday.add(const Duration(days: 1));
 
-      // Get today's completed jobs
       final completedTodaySnapshot = await _firestore
           .collection(_driverJobsCollection)
           .where('driver_id', isEqualTo: driverId)
@@ -295,7 +289,6 @@ class FirebaseDriverService {
           .where('pickup_time', isLessThan: Timestamp.fromDate(endOfToday))
           .get();
 
-      // Get upcoming jobs
       final upcomingSnapshot = await _firestore
           .collection(_driverJobsCollection)
           .where('driver_id', isEqualTo: driverId)
@@ -303,7 +296,6 @@ class FirebaseDriverService {
           .where('pickup_time', isGreaterThan: Timestamp.fromDate(now))
           .get();
 
-      // Get all completed jobs
       final allCompletedSnapshot = await _firestore
           .collection(_driverJobsCollection)
           .where('driver_id', isEqualTo: driverId)
@@ -368,28 +360,109 @@ class FirebaseDriverService {
     }
   }
 
-  // Complete a job
-  Future<void> completeJob(String jobId) async {
+  // ✅ UPDATED: Complete a job and automatically create earnings
+  Future<bool> completeJob(String jobId) async {
     try {
+      print('');
+      print('═══════════════════════════════════════');
+      print('🚗 COMPLETING DRIVER JOB');
+      print('═══════════════════════════════════════');
+      print('Job ID: $jobId');
+      
+      // 1. Get the job details first
+      final jobDoc = await _firestore
+          .collection(_driverJobsCollection)
+          .doc(jobId)
+          .get();
+      
+      if (!jobDoc.exists) {
+        print('❌ Job not found');
+        return false;
+      }
+      
+      final jobData = jobDoc.data()!;
+      final driverId = jobData['driver_id'] as String;
+      final driverPayment = (jobData['payment'] as num?)?.toDouble() ?? 0.0;
+      final vehicleName = jobData['vehicle_name'] as String? ?? 'Unknown Vehicle';
+      final customerName = jobData['customer_name'] as String? ?? 'Unknown Customer';
+      final pickupLocation = jobData['pickup_location'] as String? ?? '';
+      final dropoffLocation = jobData['dropoff_location'] as String? ?? '';
+      final bookingId = jobData['booking_id'];
+      
+      print('Driver ID: $driverId');
+      print('Payment: RM ${driverPayment.toStringAsFixed(2)}');
+      print('Vehicle: $vehicleName');
+      print('Customer: $customerName');
+      print('Booking ID: $bookingId');
+      
+      // 2. Update the job status to completed
       await _firestore.collection(_driverJobsCollection).doc(jobId).update({
         'status': 'completed',
         'completed_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
-
-      // Also update the corresponding booking
-      final jobDoc = await _firestore.collection(_driverJobsCollection).doc(jobId).get();
-      final bookingId = jobDoc.data()?['booking_id'];
       
+      print('✅ Job status updated to completed');
+      
+      // 3. Update the booking status if it exists
       if (bookingId != null) {
-        await _firestore.collection(_bookingsCollection).doc(bookingId.toString()).update({
-          'driver_job_status': 'completed',
-          'updated_at': FieldValue.serverTimestamp(),
-        });
+        try {
+          await _firestore.collection(_bookingsCollection).doc(bookingId.toString()).update({
+            'driver_job_status': 'completed',
+            'updated_at': FieldValue.serverTimestamp(),
+          });
+          print('✅ Booking updated');
+        } catch (e) {
+          print('⚠️  Could not update booking: $e');
+        }
       }
+      
+      // 4. Automatically create earnings record
+      if (driverPayment > 0) {
+        // Create a meaningful description
+        String description = 'Job completed: $customerName';
+        if (pickupLocation.isNotEmpty && dropoffLocation.isNotEmpty) {
+          description = '$pickupLocation to $dropoffLocation';
+        } else if (vehicleName.isNotEmpty) {
+          description = 'Job completed - $vehicleName';
+        }
+        
+        // Parse jobId to int for earnings record
+        final jobIdInt = int.tryParse(jobId) ?? DateTime.now().millisecondsSinceEpoch;
+        
+        await _firestore.collection('driver_earnings').add({
+          'driver_id': driverId,
+          'job_id': jobIdInt,
+          'amount': driverPayment,
+          'description': description,
+          'status': 'paid', // Mark as paid immediately (available for withdrawal)
+          'date': FieldValue.serverTimestamp(),
+          'paid_at': FieldValue.serverTimestamp(),
+          'created_at': FieldValue.serverTimestamp(),
+        });
+        
+        print('✅ Earnings created: RM ${driverPayment.toStringAsFixed(2)}');
+        print('   Description: $description');
+      } else {
+        print('⚠️  No payment amount - earnings not created');
+      }
+      
+      print('═══════════════════════════════════════');
+      print('✅ JOB COMPLETION SUCCESS!');
+      print('═══════════════════════════════════════');
+      print('');
+      
+      return true;
     } catch (e) {
-      print('Error completing job: $e');
-      throw Exception('Failed to complete job: $e');
+      print('');
+      print('═══════════════════════════════════════');
+      print('❌ ERROR COMPLETING JOB');
+      print('═══════════════════════════════════════');
+      print('Error: $e');
+      print('Stack trace: ${StackTrace.current}');
+      print('═══════════════════════════════════════');
+      print('');
+      return false;
     }
   }
 
@@ -399,26 +472,24 @@ class FirebaseDriverService {
   Future<List<DriverEarning>> fetchEarnings(String driverId) async {
     try {
       final querySnapshot = await _firestore
-          .collection(_driverJobsCollection)
+          .collection('driver_earnings')
           .where('driver_id', isEqualTo: driverId)
-          .where('status', whereIn: ['completed', 'scheduled'])
-          .orderBy('pickup_time', descending: true)
+          .orderBy('date', descending: true)
           .get();
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data();
-        final isCompleted = data['status'] == 'completed';
         
         return DriverEarning(
           earningId: int.tryParse(doc.id) ?? 0,
           driverId: int.tryParse(driverId) ?? 0,
-          jobId: int.tryParse(data['booking_id']?.toString() ?? '0') ?? 0,
-          amount: (data['payment'] ?? 0.0).toDouble(),
-          description: '${data['pickup_location']} to ${data['dropoff_location']}',
-          status: isCompleted ? 'paid' : 'pending',
-          date: (data['pickup_time'] as Timestamp).toDate(),
-          paidAt: isCompleted && data['completed_at'] != null
-              ? (data['completed_at'] as Timestamp).toDate()
+          jobId: (data['job_id'] as num?)?.toInt() ?? 0,
+          amount: (data['amount'] ?? 0.0).toDouble(),
+          description: data['description'] ?? 'Driver Service',
+          status: data['status'] ?? 'paid',
+          date: (data['date'] as Timestamp).toDate(),
+          paidAt: data['paid_at'] != null
+              ? (data['paid_at'] as Timestamp).toDate()
               : null,
         );
       }).toList();
@@ -455,11 +526,10 @@ class FirebaseDriverService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         
-        // ✅ CRITICAL FIX: This was probably still using int.tryParse!
         return RideRequest(
-          requestId: '', // ✅ Empty string (not 0!)
-          driverId: driverId, // ✅ String
-          bookingId: doc.id, // ✅ CRITICAL: Firestore document ID as String
+          requestId: '',
+          driverId: driverId,
+          bookingId: doc.id,
           customerName: data['user_name'] ?? '',
           customerPhone: data['user_phone'] ?? '',
           vehicleName: data['vehicle_name'] ?? '',

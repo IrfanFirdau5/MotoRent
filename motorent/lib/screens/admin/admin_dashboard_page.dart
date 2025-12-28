@@ -1,3 +1,6 @@
+// FILE: motorent/lib/screens/admin/admin_dashboard_page.dart
+// REPLACE THE ENTIRE FILE WITH THIS
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +11,7 @@ import 'booking_management_page.dart';
 import 'report_management_page.dart';
 import 'admin_approval_page.dart';
 import 'admin_monthly_report_page.dart';
+import 'admin_driver_payments_page.dart'; // ✅ NEW IMPORT
 import '../../services/firebase_admin_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -37,7 +41,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     });
 
     try {
-      // Replace mock call with Firebase call
       final stats = await _adminService.getDashboardStats();
       setState(() {
         _stats = stats;
@@ -356,36 +359,54 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                             );
                           },
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         _buildManagementCard(
                           'Approval Management',
                           'Review driver applications and vehicle listings',
-                         Icons.approval,
-                        Colors.purple,
-                        () {
-                          Navigator.push(
-                           context,
-                           MaterialPageRoute(
-                             builder: (context) => const AdminApprovalPage(),
-                            ),
-                         );
-                        },
-                      ),
+                          Icons.approval,
+                          Colors.purple,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AdminApprovalPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
                         _buildManagementCard(
                           'Monthly Reports',
                           'View and export monthly performance reports',
-                         Icons.assessment,
-                        Colors.indigo,
-                       () {
-                         Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                             builder: (context) => const AdminMonthlyReportPage(),
-                           ),
-                          );
-                        },
-                     ),
-
+                          Icons.assessment,
+                          Colors.indigo,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AdminMonthlyReportPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        // ✅ NEW: Driver Payments Management Card
+                        _buildManagementCard(
+                          'Driver Payments',
+                          'Process driver withdrawal requests',
+                          Icons.account_balance_wallet,
+                          Colors.orange,
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AdminDriverPaymentsPage(
+                                  adminId: 'admin_user_id', // TODO: Replace with actual admin user ID from auth
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
