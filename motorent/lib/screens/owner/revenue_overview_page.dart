@@ -1,5 +1,5 @@
 // FILE PATH: motorent/lib/screens/owner/revenue_overview_page.dart
-// ✅ UPDATED: Uses vehicle_revenue collection
+// ✅ UPDATED: Uses vehicle_revenue collection + FULL PDF DESIGN
 
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -44,25 +44,25 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
   String _generateAdvice(VehicleRevenue vehicle) {
     if (vehicle.isProfit) {
       if (vehicle.utilizationRate >= 0.8) {
-        return "🌟 Excellent Performance! Consider adding more ${vehicle.vehicleName} units to your fleet to maximize profits.";
+        return "🌟 Excellent Performance! Consider adding more ${vehicle.vehicleName} units to your fleet to maximize profits. This vehicle is in high demand.";
       } else if (vehicle.utilizationRate >= 0.6) {
-        return "📈 Good Performance! Increase marketing to boost utilization from ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% to 80%+.";
+        return "📈 Good Performance! Increase marketing efforts and offer promotions to boost utilization from ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% to 80%+.";
       } else {
-        return "📢 Underutilized! Profitable but only ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% utilized. Implement aggressive marketing.";
+        return "📢 Underutilized Asset! This vehicle is profitable but only ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% utilized. Implement aggressive marketing, reduce minimum rental days, or offer weekend specials.";
       }
     } else {
       double lossPercentage = vehicle.monthlyPayment > 0 ? (vehicle.profitLoss.abs() / vehicle.monthlyPayment) * 100 : 0;
       
       if (vehicle.utilizationRate >= 0.7) {
         double rateIncrease = vehicle.utilizationRate > 0 ? ((vehicle.profitLoss.abs() / 30) / vehicle.utilizationRate) : 0;
-        return "💰 Pricing Adjustment Needed! High utilization but losing RM ${vehicle.profitLoss.abs().toStringAsFixed(2)}/month. Increase daily rate by RM ${rateIncrease.toStringAsFixed(2)}.";
+        return "💰 Pricing Adjustment Needed! High utilization (${(vehicle.utilizationRate * 100).toStringAsFixed(0)}%) but losing RM ${vehicle.profitLoss.abs().toStringAsFixed(2)}/month. Increase daily rate by at least RM ${rateIncrease.toStringAsFixed(2)} to break even.";
       } else if (vehicle.utilizationRate >= 0.4) {
-        return "⚠️ Action Required! Low utilization causing RM ${vehicle.profitLoss.abs().toStringAsFixed(2)} monthly loss. Reduce price or improve marketing.";
+        return "⚠️ Action Required! Low utilization (${(vehicle.utilizationRate * 100).toStringAsFixed(0)}%) causing RM ${vehicle.profitLoss.abs().toStringAsFixed(2)} monthly loss. Consider: 1) Reducing daily rate to increase bookings, or 2) Increasing rate and improving marketing.";
       } else {
         if (lossPercentage > 50) {
-          return "🚨 Critical: Consider Selling! ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% utilized with ${lossPercentage.toStringAsFixed(0)}% loss. Save RM ${(vehicle.profitLoss.abs() * 12).toStringAsFixed(2)}/year.";
+          return "🚨 Critical: Consider Selling! Only ${(vehicle.utilizationRate * 100).toStringAsFixed(0)}% utilized with ${lossPercentage.toStringAsFixed(0)}% loss ratio. Selling this vehicle and reinvesting in high-performing models could save RM ${(vehicle.profitLoss.abs() * 12).toStringAsFixed(2)}/year.";
         } else {
-          return "⚡ Urgent! Very low utilization (${(vehicle.utilizationRate * 100).toStringAsFixed(0)}%). Aggressive action needed.";
+          return "⚡ Urgent Action Needed! Very low utilization (${(vehicle.utilizationRate * 100).toStringAsFixed(0)}%). Options: 1) Aggressive price reduction + marketing, 2) Temporary unlisting to reduce costs, or 3) Consider selling if no improvement in 2 months.";
         }
       }
     }
@@ -70,15 +70,15 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
 
   String _generateOverallInsights() {
     if (_profitableVehicles == 0) {
-      return "⚠️ URGENT: All vehicles losing money. Review pricing strategy immediately.";
+      return "⚠️ URGENT: All vehicles are currently losing money. Immediate action required: review pricing strategy, reduce operating costs, or consider downsizing fleet.";
     } else if (_losingVehicles == 0) {
-      return "🎉 EXCELLENT: All vehicles profitable! Focus on scaling.";
+      return "🎉 EXCELLENT: All vehicles are profitable! Focus on scaling successful models and maintaining quality service to sustain growth.";
     } else {
       double profitRatio = _profitableVehicles / _vehicleRevenues.length;
       if (profitRatio >= 0.7) {
-        return "✅ STRONG: $_profitableVehicles/${_vehicleRevenues.length} profitable. Fix underperformers.";
+        return "✅ STRONG PERFORMANCE: $_profitableVehicles out of ${_vehicleRevenues.length} vehicles are profitable. Focus on fixing underperforming vehicles or replacing them with proven models.";
       } else {
-        return "📊 MIXED: $_profitableVehicles/${_vehicleRevenues.length} profitable. Turn around loss-makers.";
+        return "📊 MIXED RESULTS: Only $_profitableVehicles/${_vehicleRevenues.length} vehicles profitable. Priority: Turn around or exit loss-making vehicles to improve overall fleet performance.";
       }
     }
   }
@@ -97,7 +97,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
 
       final now = DateTime.now();
       
-      // ✅ Fetch from vehicle_revenue collection
       final revenueData = await _revenueService.getOwnerRevenueForMonth(
         ownerId: currentUser.uid,
         month: now.month,
@@ -109,7 +108,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
       if (revenueData.isEmpty) {
         print('ℹ️  No revenue data - checking if backfill needed...');
         
-        // Check if there are completed bookings that haven't been recorded
         final completedBookings = await FirebaseFirestore.instance
             .collection('bookings')
             .where('owner_id', isEqualTo: currentUser.uid)
@@ -258,26 +256,258 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           build: (context) => [
-            pw.Text('MotoRent Revenue Report', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold)),
-            pw.Text(monthYear),
-            pw.SizedBox(height: 20),
-            pw.Text('Total Revenue: RM ${_totalMonthlyRevenue.toStringAsFixed(2)}'),
-            pw.Text('Total Payments: RM ${_totalMonthlyPayment.toStringAsFixed(2)}'),
-            pw.Text('Net Profit: RM ${_netProfit.toStringAsFixed(2)}'),
-            pw.SizedBox(height: 20),
-            ..._vehicleRevenues.map((v) => pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 10),
+            // Header
+            pw.Header(
+              level: 0,
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(v.vehicleName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Revenue: RM ${v.monthlyRevenue.toStringAsFixed(2)}'),
-                  pw.Text('Profit/Loss: RM ${v.profitLoss.toStringAsFixed(2)}'),
-                  pw.Divider(),
+                  pw.Text(
+                    'MotoRent Revenue Report',
+                    style: pw.TextStyle(
+                      fontSize: 28,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blue700,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    monthYear,
+                    style: const pw.TextStyle(
+                      fontSize: 16,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(now)}',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Executive Summary
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue50,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Executive Summary',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blue900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+                  _buildPdfSummaryRow('Total Monthly Revenue:', 'RM ${_totalMonthlyRevenue.toStringAsFixed(2)}'),
+                  _buildPdfSummaryRow('Total Monthly Payments:', 'RM ${_totalMonthlyPayment.toStringAsFixed(2)}'),
+                  _buildPdfSummaryRow('Net Profit/Loss:', 'RM ${_netProfit.toStringAsFixed(2)}', 
+                    isHighlight: true, 
+                    color: _netProfit >= 0 ? PdfColors.green700 : PdfColors.red700,
+                  ),
+                  _buildPdfSummaryRow('Profit Margin:', '${_totalMonthlyRevenue > 0 ? ((_netProfit / _totalMonthlyRevenue) * 100).toStringAsFixed(1) : '0.0'}%'),
+                  pw.SizedBox(height: 8),
+                  pw.Divider(color: PdfColors.blue200),
+                  pw.SizedBox(height: 8),
+                  _buildPdfSummaryRow('Total Vehicles:', '${_vehicleRevenues.length}'),
+                  _buildPdfSummaryRow('Profitable Vehicles:', '$_profitableVehicles', color: PdfColors.green700),
+                  _buildPdfSummaryRow('Loss-Making Vehicles:', '$_losingVehicles', color: PdfColors.red700),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Overall Business Insights
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.amber50,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: PdfColors.amber200, width: 2),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Overall Business Insights',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.amber900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    _generateOverallInsights(),
+                    style: const pw.TextStyle(
+                      fontSize: 12,
+                      color: PdfColors.grey800,
+                      lineSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 24),
+
+            // Vehicle Performance Details
+            pw.Text(
+              'Vehicle Performance Analysis',
+              style: pw.TextStyle(
+                fontSize: 20,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // Vehicle details
+            ..._vehicleRevenues.map((vehicle) => pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 16),
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  // Vehicle header
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              vehicle.vehicleName,
+                              style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                            pw.Text(
+                              vehicle.licensePlate,
+                              style: const pw.TextStyle(
+                                fontSize: 12,
+                                color: PdfColors.grey600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          color: vehicle.isProfit ? PdfColors.green100 : PdfColors.red100,
+                          borderRadius: pw.BorderRadius.circular(12),
+                        ),
+                        child: pw.Text(
+                          vehicle.isProfit ? 'PROFIT' : 'LOSS',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: vehicle.isProfit ? PdfColors.green900 : PdfColors.red900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // Financial details
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Column(
+                      children: [
+                        _buildPdfFinancialRow('Monthly Revenue:', 'RM ${vehicle.monthlyRevenue.toStringAsFixed(2)}', PdfColors.green700),
+                        pw.SizedBox(height: 6),
+                        _buildPdfFinancialRow('Monthly Payment:', 'RM ${vehicle.monthlyPayment.toStringAsFixed(2)}', PdfColors.orange700),
+                        pw.SizedBox(height: 6),
+                        pw.Divider(),
+                        pw.SizedBox(height: 6),
+                        _buildPdfFinancialRow(
+                          'Net ${vehicle.isProfit ? "Profit" : "Loss"}:',
+                          'RM ${vehicle.profitLoss.abs().toStringAsFixed(2)}',
+                          vehicle.isProfit ? PdfColors.green900 : PdfColors.red900,
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // Performance metrics
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildPdfMetric('Bookings', '${vehicle.bookingsThisMonth}'),
+                      _buildPdfMetric('Avg. Value', 'RM ${vehicle.averageBookingValue.toStringAsFixed(0)}'),
+                      _buildPdfMetric('Utilization', '${(vehicle.utilizationRate * 100).toStringAsFixed(0)}%'),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // Business advice
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.blue50,
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Business Advice:',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.blue900,
+                          ),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          _generateAdvice(vehicle),
+                          style: const pw.TextStyle(
+                            fontSize: 11,
+                            color: PdfColors.grey800,
+                            lineSpacing: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             )),
           ],
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 16),
+            child: pw.Text(
+              'Page ${context.pageNumber} of ${context.pagesCount}',
+              style: const pw.TextStyle(
+                fontSize: 10,
+                color: PdfColors.grey600,
+              ),
+            ),
+          ),
         ),
       );
 
@@ -286,12 +516,16 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
 
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'Revenue_${DateFormat('yyyy_MM_dd').format(now)}.pdf',
+        name: 'MotoRent_Revenue_Report_${DateFormat('yyyy_MM_dd').format(now)}.pdf',
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report generated!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Report generated successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -300,6 +534,86 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  pw.Widget _buildPdfSummaryRow(String label, String value, {bool isHighlight = false, PdfColor? color}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: isHighlight ? 13 : 12,
+              fontWeight: isHighlight ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: PdfColors.grey800,
+            ),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: isHighlight ? 14 : 12,
+              fontWeight: pw.FontWeight.bold,
+              color: color ?? PdfColors.grey900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfFinancialRow(String label, String value, PdfColor color, {bool isBold = false}) {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(
+          label,
+          style: pw.TextStyle(
+            fontSize: isBold ? 12 : 11,
+            fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            color: PdfColors.grey700,
+          ),
+        ),
+        pw.Text(
+          value,
+          style: pw.TextStyle(
+            fontSize: isBold ? 13 : 12,
+            fontWeight: pw.FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfMetric(String label, String value) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            label,
+            style: const pw.TextStyle(
+              fontSize: 9,
+              color: PdfColors.grey600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

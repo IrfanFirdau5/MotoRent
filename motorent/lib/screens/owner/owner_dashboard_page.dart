@@ -9,6 +9,7 @@ import 'owner_report_page.dart';
 import 'owner_profile_page.dart';
 import '/services/firebase_booking_service.dart';
 import '/services/firebase_vehicle_service.dart';
+import '../../services/vehicle_revenue_tracking_service.dart';
 import '/models/vehicle.dart';
 import '/models/user.dart';
 import '../debug_everything_page.dart';
@@ -37,6 +38,11 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   final _bookingService = FirebaseBookingService();
   final _vehicleService = FirebaseVehicleService();
 
+  final VehicleRevenueTrackingService _revenueService = VehicleRevenueTrackingService();
+  List<double> _last6MonthsRevenue = [0, 0, 0, 0, 0, 0];
+  List<String> _last6MonthsLabels = [];
+  bool _chartLoading = true;
+
   int _totalVehicles = 0;
   int _activeBookings = 0;
   double _monthlyRevenue = 0;
@@ -47,6 +53,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   void initState() {
     super.initState();
     _loadDashboardData();
+    _loadRevenueChartData();
+    _loadAverageRating();
   }
 
   Future<void> _loadDashboardData() async {
@@ -129,8 +137,130 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         _averageRating = averageRating;
         _isLoading = false;
       });
+
+      _loadRevenueChartData();
+
     } catch (e) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadRevenueChartData() async {
+    setState(() {
+      _chartLoading = true;
+    });
+
+    try {
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        print('No user logged in for chart data');
+        return;
+      }
+
+      print('📊 Loading revenue chart data...');
+
+      final now = DateTime.now();
+      List<double> revenueData = [];
+      List<String> monthLabels = [];
+
+      // Get last 6 months of revenue data
+      for (int i = 5; i >= 0; i--) {
+        final targetDate = DateTime(now.year, now.month - i, 1);
+        final month = targetDate.month;
+        final year = targetDate.year;
+
+        // Get revenue for this month
+        final monthRevenue = await _revenueService.getOwnerRevenueForMonth(
+          ownerId: currentUser.uid,
+          month: month,
+          year: year,
+        );
+
+        // Calculate total revenue for the month
+        double totalRevenue = 0;
+        for (var vehicleRevenue in monthRevenue) {
+          totalRevenue += (vehicleRevenue['total_revenue'] as num?)?.toDouble() ?? 0.0;
+        }
+
+        revenueData.add(totalRevenue);
+        monthLabels.add(DateFormat('MMM').format(targetDate));
+
+        print('   ${DateFormat('MMM yyyy').format(targetDate)}: RM ${totalRevenue.toStringAsFixed(2)}');
+      }
+
+      setState(() {
+        _last6MonthsRevenue = revenueData;
+        _last6MonthsLabels = monthLabels;
+        _chartLoading = false;
+      });
+
+      print('✅ Chart data loaded successfully');
+
+    } catch (e, stackTrace) {
+      print('❌ Error loading chart data: $e');
+      print('Stack trace: $stackTrace');
+      
+      setState(() {
+        _chartLoading = false;
+        // Keep default values if error
+      });
+    }
+  }
+
+  Future<void> _loadAverageRating() async {
+    try {
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      print('⭐ Loading average rating...');
+
+      // Get all vehicles for this owner
+      final vehiclesSnapshot = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('owner_id', isEqualTo: currentUser.uid)
+          .where('is_deleted', isEqualTo: false)
+          .get();
+
+      if (vehiclesSnapshot.docs.isEmpty) {
+        print('No vehicles found for rating calculation');
+        setState(() {
+          _averageRating = 0.0;
+        });
+        return;
+      }
+
+      // Collect all ratings and review counts
+      double totalRatingSum = 0;
+      int totalReviewCount = 0;
+
+      for (var vehicleDoc in vehiclesSnapshot.docs) {
+        final vehicleData = vehicleDoc.data();
+        final rating = (vehicleData['rating'] as num?)?.toDouble();
+        final reviewCount = (vehicleData['review_count'] as int?) ?? 0;
+
+        if (rating != null && reviewCount > 0) {
+          // Weight by number of reviews
+          totalRatingSum += (rating * reviewCount);
+          totalReviewCount += reviewCount;
+        }
+      }
+
+      // Calculate weighted average
+      final averageRating = totalReviewCount > 0 
+          ? totalRatingSum / totalReviewCount 
+          : 0.0;
+
+      setState(() {
+        _averageRating = averageRating;
+      });
+
+      print('✅ Average rating calculated: ${averageRating.toStringAsFixed(1)} from $totalReviewCount reviews');
+
+    } catch (e) {
+      print('❌ Error loading average rating: $e');
+      setState(() {
+        _averageRating = 0.0;
+      });
     }
   }
 
@@ -462,42 +592,173 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   }
 
   Widget _buildRevenueChart() {
+    if (_chartLoading) {
+      return Container(
+        height: 200,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)
+          ],
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Check if we have any data
+    final hasData = _last6MonthsRevenue.any((revenue) => revenue > 0);
+    
+    if (!hasData) {
+      return Container(
+        height: 200,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.show_chart, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 12),
+              Text(
+                'No revenue data yet',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Complete bookings to see trends',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Find max value for better scaling
+    final maxRevenue = _last6MonthsRevenue.reduce((a, b) => a > b ? a : b);
+    final double chartMaxY = maxRevenue > 0 ? (maxRevenue * 1.2) : 1000; // Add 20% padding
+
     return Container(
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5)
+        ],
       ),
       child: LineChart(
         LineChartData(
           gridData: FlGridData(show: false),
           titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 45,
+                interval: chartMaxY / 4,
+                getTitlesWidget: (value, meta) {
+                  // Show simplified values (in thousands if applicable)
+                  if (value == 0) return const Text('0');
+                  if (value >= 1000) {
+                    return Text(
+                      '${(value / 1000).toStringAsFixed(1)}k',
+                      style: const TextStyle(fontSize: 10),
+                    );
+                  }
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
+            ),
             rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                  return Text(value.toInt() >= 0 && value.toInt() < months.length ? months[value.toInt()] : '');
+                  final index = value.toInt();
+                  if (index >= 0 && index < _last6MonthsLabels.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        _last6MonthsLabels[index],
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    );
+                  }
+                  return const Text('');
                 },
               ),
             ),
           ),
           borderData: FlBorderData(show: false),
+          minY: 0,
+          maxY: chartMaxY,
           lineBarsData: [
             LineChartBarData(
-              spots: const [FlSpot(0, 3000), FlSpot(1, 3500), FlSpot(2, 4200), FlSpot(3, 3800), FlSpot(4, 4500), FlSpot(5, 4567.50)],
+              spots: List.generate(
+                _last6MonthsRevenue.length,
+                (index) => FlSpot(index.toDouble(), _last6MonthsRevenue[index]),
+              ),
               isCurved: true,
               color: const Color(0xFF1E88E5),
               barWidth: 3,
-              dotData: FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: const Color(0xFF1E88E5).withOpacity(0.1)),
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: const Color(0xFF1E88E5),
+                  );
+                },
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                color: const Color(0xFF1E88E5).withOpacity(0.1),
+              ),
             ),
           ],
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              tooltipBgColor: Colors.blueGrey.withOpacity(0.9),
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  final monthLabel = _last6MonthsLabels[spot.x.toInt()];
+                  final revenue = spot.y;
+                  return LineTooltipItem(
+                    '$monthLabel\nRM ${revenue.toStringAsFixed(2)}',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                }).toList();
+              },
+            ),
+          ),
         ),
       ),
     );
