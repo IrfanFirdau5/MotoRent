@@ -16,6 +16,7 @@ import '../login_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:intl/intl.dart';
+import 'manual_revenue_backfill_page.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final int ownerId;
@@ -392,6 +393,12 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => ManageCompanyDriversPage(ownerId: widget.ownerId)));
                 }),
+                _buildDrawerItem(icon: Icons.sync, title: 'Revenue Backfill', color: Colors.green, onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ManualRevenueBackfillPage(ownerId: widget.ownerId)
+        ));
+      }
+    ),
                 const Divider(height: 1),
                 
                 Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('SUPPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),

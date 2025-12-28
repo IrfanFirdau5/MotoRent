@@ -4,11 +4,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking.dart';
 import 'stripe_payment_service.dart';
+import '../services/vehicle_revenue_tracking_service.dart';
 
 class FirebaseBookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _bookingsCollection = 'bookings';
   final StripePaymentService _stripeService = StripePaymentService();
+  final VehicleRevenueTrackingService _revenueService = VehicleRevenueTrackingService();
 
   // ✅ UPDATED: Create booking with payment_pending status
   Future<Map<String, dynamic>> createBooking({
@@ -348,6 +350,13 @@ class FirebaseBookingService {
     String? rejectionReason,
   }) async {
     try {
+      // If completing a booking, use the special method that records revenue
+      if (newStatus == 'completed') {
+        final result = await completeBooking(bookingId);
+        return result['success'] == true;
+      }
+      
+      // Otherwise, standard status update
       Map<String, dynamic> updateData = {
         'booking_status': newStatus,
         'updated_at': FieldValue.serverTimestamp(),
@@ -357,16 +366,81 @@ class FirebaseBookingService {
         updateData['rejection_reason'] = rejectionReason;
       }
 
-      if (newStatus == 'completed') {
-        updateData['completion_date'] = FieldValue.serverTimestamp();
-      }
-
       await _firestore.collection(_bookingsCollection).doc(bookingId).update(updateData);
       
       return true;
     } catch (e) {
       print('Error updating booking status: $e');
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> completeBooking(String bookingId) async {
+    try {
+      print('');
+      print('═══════════════════════════════════════');
+      print('✅ COMPLETING BOOKING');
+      print('═══════════════════════════════════════');
+      print('Booking ID: $bookingId');
+      
+      // Get booking data
+      final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
+      
+      if (!bookingDoc.exists) {
+        return {
+          'success': false,
+          'message': 'Booking not found',
+        };
+      }
+      
+      final bookingData = bookingDoc.data()!;
+      
+      // Mark booking as completed
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'booking_status': 'completed',
+        'completion_date': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      
+      print('✅ Booking status updated to completed');
+      
+      // Record revenue in vehicle_revenue collection
+      print('💰 Recording vehicle revenue...');
+      
+      final revenueRecorded = await _revenueService.recordBookingRevenue(
+        bookingId: bookingId,
+        vehicleId: bookingData['vehicle_id'],
+        ownerId: bookingData['owner_id'],
+        totalPrice: (bookingData['total_price'] as num).toDouble(),
+        startDate: (bookingData['start_date'] as Timestamp).toDate(),
+        endDate: (bookingData['end_date'] as Timestamp).toDate(),
+        completionDate: DateTime.now(),
+        needDriver: bookingData['need_driver'] ?? false,
+        driverPrice: (bookingData['driver_price'] as num?)?.toDouble(),
+      );
+      
+      if (revenueRecorded) {
+        print('✅ Revenue recorded successfully');
+      } else {
+        print('⚠️  Revenue recording failed (booking still marked as complete)');
+      }
+      
+      print('═══════════════════════════════════════');
+      print('');
+      
+      return {
+        'success': true,
+        'message': 'Booking completed and revenue recorded',
+        'revenue_recorded': revenueRecorded,
+      };
+      
+    } catch (e, stackTrace) {
+      print('❌ Error completing booking: $e');
+      print('Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'message': 'Failed to complete booking: $e',
+      };
     }
   }
 
