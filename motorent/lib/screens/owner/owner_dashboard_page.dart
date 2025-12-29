@@ -1,3 +1,6 @@
+// FILE: motorent/lib/screens/owner/owner_dashboard_page.dart
+// ✅ COMPLETE VERSION WITH SUBSCRIPTION SYSTEM - FULL FILE
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'add_vehicle_page.dart';
@@ -18,6 +21,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:intl/intl.dart';
 import 'manual_revenue_backfill_page.dart';
+// ✅ NEW IMPORTS FOR SUBSCRIPTION
+import '../../services/subscription_service.dart';
+import '../../models/subscription.dart';
+import 'subscription_payment_page.dart';
+import '../../widgets/subscription_banner.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final int ownerId;
@@ -49,12 +57,311 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   int _totalBookings = 0;
   double _averageRating = 0;
   
+  // ✅ NEW: Subscription fields
+  final SubscriptionService _subscriptionService = SubscriptionService();
+  Subscription? _subscription;
+  bool _isLoadingSubscription = true;
+  
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
     _loadRevenueChartData();
     _loadAverageRating();
+    _loadSubscription(); // ✅ NEW
+  }
+
+  // ✅ NEW: Load subscription
+  Future<void> _loadSubscription() async {
+    try {
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+      
+      final subscription = await _subscriptionService.getUserSubscription(currentUser.uid);
+      
+      setState(() {
+        _subscription = subscription;
+        _isLoadingSubscription = false;
+      });
+      
+      print('📊 Subscription status: ${subscription?.plan} - ${subscription?.status}');
+      
+    } catch (e) {
+      print('❌ Error loading subscription: $e');
+      setState(() {
+        _isLoadingSubscription = false;
+      });
+    }
+  }
+
+  // ✅ NEW: Show subscription required dialog
+  Future<void> _showSubscriptionRequired() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.star,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Upgrade to Pro',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Unlock Revenue Overview with MotoRent Pro!',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildProFeature(Icons.analytics, 'Detailed Revenue Analytics'),
+            const SizedBox(height: 8),
+            _buildProFeature(Icons.assessment, 'AI-Powered Insights'),
+            const SizedBox(height: 8),
+            _buildProFeature(Icons.picture_as_pdf, 'Professional Reports'),
+            const SizedBox(height: 8),
+            _buildProFeature(Icons.trending_up, 'Profit/Loss Analysis'),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Only RM 50.00',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '/month',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Maybe Later'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.star, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Subscribe Now',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == true && mounted) {
+      final currentUser = auth.FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+      
+      // Navigate to subscription payment page
+      final subscribed = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SubscriptionPaymentPage(
+            userId: currentUser.uid,
+            userEmail: currentUser.email ?? '',
+            userName: widget.ownerName,
+          ),
+        ),
+      );
+      
+      // Reload subscription if payment was successful
+      if (subscribed == true) {
+        _loadSubscription();
+      }
+    }
+  }
+
+  // ✅ NEW: Build Pro feature item
+  Widget _buildProFeature(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF1E88E5),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
+        const Icon(
+          Icons.check_circle,
+          size: 18,
+          color: Colors.green,
+        ),
+      ],
+    );
+  }
+
+  // ✅ NEW: Handle revenue overview tap
+  void _handleRevenueOverviewTap() {
+    // Check if user has Pro access
+    if (_subscription?.hasProAccess ?? false) {
+      // User has Pro - navigate to revenue overview
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RevenueOverviewPage(ownerId: widget.ownerId),
+        ),
+      );
+    } else {
+      // User doesn't have Pro - show subscription dialog
+      _showSubscriptionRequired();
+    }
+  }
+
+  // ✅ NEW: Show subscription details
+  void _showSubscriptionDetails() {
+    if (_subscription == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.star, color: Colors.amber, size: 28),
+            SizedBox(width: 12),
+            Text('MotoRent Pro'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Status', _subscription!.statusDisplay),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              'Valid Until',
+              DateFormat('dd MMMM yyyy').format(_subscription!.endDate!),
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              'Days Remaining',
+              '${_subscription!.daysRemaining} days',
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow('Price', 'RM 50.00/month'),
+            if (_subscription!.isExpiringSoon) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Your subscription expires soon!',
+                        style: TextStyle(
+                          color: Colors.orange[900],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ NEW: Build detail row
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _loadDashboardData() async {
@@ -69,20 +376,17 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         throw Exception('User not logged in');
       }
 
-      // Fetch vehicles
       final vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('vehicles')
           .where('owner_id', isEqualTo: currentUser.uid)
           .where('is_deleted', isEqualTo: false)
           .get();
 
-      // Fetch bookings
       final bookingsSnapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('owner_id', isEqualTo: currentUser.uid)
           .get();
 
-      // Calculate statistics
       int totalVehicles = vehiclesSnapshot.docs.length;
       int totalBookings = bookingsSnapshot.docs.length;
       int activeBookings = 0;
@@ -163,20 +467,17 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       List<double> revenueData = [];
       List<String> monthLabels = [];
 
-      // Get last 6 months of revenue data
       for (int i = 5; i >= 0; i--) {
         final targetDate = DateTime(now.year, now.month - i, 1);
         final month = targetDate.month;
         final year = targetDate.year;
 
-        // Get revenue for this month
         final monthRevenue = await _revenueService.getOwnerRevenueForMonth(
           ownerId: currentUser.uid,
           month: month,
           year: year,
         );
 
-        // Calculate total revenue for the month
         double totalRevenue = 0;
         for (var vehicleRevenue in monthRevenue) {
           totalRevenue += (vehicleRevenue['total_revenue'] as num?)?.toDouble() ?? 0.0;
@@ -202,7 +503,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       
       setState(() {
         _chartLoading = false;
-        // Keep default values if error
       });
     }
   }
@@ -214,7 +514,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
       print('⭐ Loading average rating...');
 
-      // Get all vehicles for this owner
       final vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('vehicles')
           .where('owner_id', isEqualTo: currentUser.uid)
@@ -229,7 +528,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         return;
       }
 
-      // Collect all ratings and review counts
       double totalRatingSum = 0;
       int totalReviewCount = 0;
 
@@ -239,13 +537,11 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         final reviewCount = (vehicleData['review_count'] as int?) ?? 0;
 
         if (rating != null && reviewCount > 0) {
-          // Weight by number of reviews
           totalRatingSum += (rating * reviewCount);
           totalReviewCount += reviewCount;
         }
       }
 
-      // Calculate weighted average
       final averageRating = totalReviewCount > 0 
           ? totalRatingSum / totalReviewCount 
           : 0.0;
@@ -366,7 +662,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadDashboardData,
+              onRefresh: () async {
+                await _loadDashboardData();
+                await _loadSubscription();
+              },
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -375,6 +674,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     Text('Welcome back,', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                     Text(widget.ownerName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 24),
+
+                    // ✅ NEW: Subscription Banner
+                    if (_subscription != null && !_isLoadingSubscription)
+                      SubscriptionBanner(
+                        subscription: _subscription!,
+                        onUpgradeTap: _showSubscriptionRequired,
+                        onManageTap: _subscription!.hasProAccess ? _showSubscriptionDetails : null,
+                      ),
 
                     Row(
                       children: [
@@ -393,24 +700,60 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Revenue Overview with View Details button
+                    // ✅ UPDATED: Revenue Overview with subscription check
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Revenue Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => RevenueOverviewPage(ownerId: widget.ownerId)));
-                          },
-                          child: const Text('View Details'),
+                        Row(
+                          children: [
+                            const Text('Revenue Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            if (_subscription?.hasProAccess ?? false)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.star, size: 12, color: Colors.white),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'PRO',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: _handleRevenueOverviewTap,
+                          icon: Icon(
+                            _subscription?.hasProAccess ?? false
+                                ? Icons.arrow_forward
+                                : Icons.lock,
+                            size: 16,
+                          ),
+                          label: Text(
+                            _subscription?.hasProAccess ?? false
+                                ? 'View Details'
+                                : 'Unlock',
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     InkWell(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => RevenueOverviewPage(ownerId: widget.ownerId)));
-                      },
+                      onTap: _handleRevenueOverviewTap,
                       child: _buildRevenueChart(),
                     ),
                     const SizedBox(height: 24),
@@ -485,7 +828,54 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
               padding: EdgeInsets.zero,
               children: [
                 const SizedBox(height: 8),
-                  _buildDrawerItem(icon: Icons.person, title: 'Edit Profile', onTap: () async {
+                
+                // ✅ NEW: Subscription item in drawer
+                if (!_isLoadingSubscription && _subscription != null)
+                  ListTile(
+                    leading: Icon(
+                      _subscription!.hasProAccess ? Icons.star : Icons.star_outline,
+                      color: _subscription!.hasProAccess ? Colors.amber : Colors.grey,
+                    ),
+                    title: Text(
+                      _subscription!.hasProAccess ? 'MotoRent Pro' : 'Upgrade to Pro',
+                      style: TextStyle(
+                        fontWeight: _subscription!.hasProAccess ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _subscription!.hasProAccess
+                          ? 'Active until ${DateFormat('dd MMM yyyy').format(_subscription!.endDate!)}'
+                          : 'Unlock premium features',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: _subscription!.hasProAccess
+                        ? null
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'RM 50',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (_subscription!.hasProAccess) {
+                        _showSubscriptionDetails();
+                      } else {
+                        _showSubscriptionRequired();
+                      }
+                    },
+                  ),
+                
+                _buildDrawerItem(icon: Icons.person, title: 'Edit Profile', onTap: () async {
                   Navigator.pop(context);
                   try {
                     final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser?.uid).get();
@@ -525,10 +915,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                 }),
                 _buildDrawerItem(icon: Icons.sync, title: 'Revenue Backfill', color: Colors.green, onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ManualRevenueBackfillPage(ownerId: widget.ownerId)
-        ));
-      }
-    ),
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ManualRevenueBackfillPage(ownerId: widget.ownerId)));
+                }),
                 const Divider(height: 1),
                 
                 Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('SUPPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),
@@ -609,7 +997,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       );
     }
 
-    // Check if we have any data
     final hasData = _last6MonthsRevenue.any((revenue) => revenue > 0);
     
     if (!hasData) {
@@ -651,9 +1038,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       );
     }
 
-    // Find max value for better scaling
     final maxRevenue = _last6MonthsRevenue.reduce((a, b) => a > b ? a : b);
-    final double chartMaxY = maxRevenue > 0 ? (maxRevenue * 1.2) : 1000; // Add 20% padding
+    final double chartMaxY = maxRevenue > 0 ? (maxRevenue * 1.2) : 1000;
 
     return Container(
       height: 200,
@@ -675,7 +1061,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                 reservedSize: 45,
                 interval: chartMaxY / 4,
                 getTitlesWidget: (value, meta) {
-                  // Show simplified values (in thousands if applicable)
                   if (value == 0) return const Text('0');
                   if (value >= 1000) {
                     return Text(
