@@ -5,13 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../services/admin_service.dart';
+import '../../services/auth_service.dart'; // ✅ ADD THIS
+import '../login_page.dart'; // ✅ ADD THIS
 import 'user_management_page.dart';
 import 'vehicle_management_page.dart';
 import 'booking_management_page.dart';
 import 'report_management_page.dart';
 import 'admin_approval_page.dart';
 import 'admin_monthly_report_page.dart';
-import 'admin_driver_payments_page.dart'; // ✅ NEW IMPORT
+import 'admin_driver_payments_page.dart';
 import '../../services/firebase_admin_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -23,6 +25,7 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   final FirebaseAdminService _adminService = FirebaseAdminService();
+  final AuthService _authService = AuthService(); // ✅ ADD THIS
   
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
@@ -54,6 +57,61 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // ✅ ADD LOGOUT METHOD
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _authService.logout();
+        
+        if (!mounted) return;
+        
+        // Navigate to login page and remove all previous routes
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logged out successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging out: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,11 +130,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               // TODO: Navigate to notifications
             },
           ),
+          // ✅ REPLACE account_circle button with logout button
           IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: () {
-              // TODO: Navigate to admin profile
-            },
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: _handleLogout,
           ),
         ],
       ),
@@ -390,7 +448,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        // ✅ NEW: Driver Payments Management Card
                         _buildManagementCard(
                           'Driver Payments',
                           'Process driver withdrawal requests',
@@ -401,7 +458,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => AdminDriverPaymentsPage(
-                                  adminId: 'admin_user_id', // TODO: Replace with actual admin user ID from auth
+                                  adminId: 'admin_user_id',
                                 ),
                               ),
                             );
