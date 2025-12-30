@@ -1,5 +1,5 @@
 // FILE: lib/models/booking.dart
-// ✅ UPDATED: Added payment tracking fields
+// ✅ UPDATED: Added location coordinates for map integration
 
 class Booking {
   final dynamic bookingId;
@@ -9,7 +9,7 @@ class Booking {
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
-  final String bookingStatus; // payment_pending, pending, confirmed, cancelled, completed, rejected
+  final String bookingStatus;
   final DateTime createdAt;
   final String? userName;
   final String? vehicleName;
@@ -19,9 +19,17 @@ class Booking {
   final int? driverId;
   final String? driverName;
   
-  // ✅ NEW: Payment tracking fields
-  final String? paymentStatus; // pending, authorized, captured, cancelled, refunded
-  final String? paymentIntentId; // Stripe Payment Intent ID
+  // Payment tracking fields
+  final String? paymentStatus;
+  final String? paymentIntentId;
+  
+  // ✅ NEW: Location fields with coordinates
+  final String? pickupLocation;
+  final String? dropoffLocation;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+  final double? dropoffLatitude;
+  final double? dropoffLongitude;
 
   Booking({
     required this.bookingId,
@@ -42,6 +50,12 @@ class Booking {
     this.driverName,
     this.paymentStatus,
     this.paymentIntentId,
+    this.pickupLocation,
+    this.dropoffLocation,
+    this.pickupLatitude,
+    this.pickupLongitude,
+    this.dropoffLatitude,
+    this.dropoffLongitude,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -74,6 +88,12 @@ class Booking {
       driverName: json['driver_name']?.toString(),
       paymentStatus: json['payment_status']?.toString(),
       paymentIntentId: json['payment_intent_id']?.toString(),
+      pickupLocation: json['pickup_location']?.toString(),
+      dropoffLocation: json['dropoff_location']?.toString(),
+      pickupLatitude: (json['pickup_latitude'] as num?)?.toDouble(),
+      pickupLongitude: (json['pickup_longitude'] as num?)?.toDouble(),
+      dropoffLatitude: (json['dropoff_latitude'] as num?)?.toDouble(),
+      dropoffLongitude: (json['dropoff_longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -97,6 +117,12 @@ class Booking {
       'driver_name': driverName,
       'payment_status': paymentStatus,
       'payment_intent_id': paymentIntentId,
+      'pickup_location': pickupLocation,
+      'dropoff_location': dropoffLocation,
+      'pickup_latitude': pickupLatitude,
+      'pickup_longitude': pickupLongitude,
+      'dropoff_latitude': dropoffLatitude,
+      'dropoff_longitude': dropoffLongitude,
     };
   }
 
@@ -145,17 +171,26 @@ class Booking {
     return totalPrice;
   }
 
-  // ✅ Check if payment is awaiting capture
   bool get isPaymentHeld => 
       paymentStatus?.toLowerCase() == 'authorized' && 
       bookingStatus.toLowerCase() == 'pending';
 
-  // ✅ Check if payment was captured
   bool get isPaymentCaptured => 
       paymentStatus?.toLowerCase() == 'captured';
 
-  // ✅ Check if booking can be approved (has authorized payment)
   bool get canBeApproved => 
       bookingStatus.toLowerCase() == 'pending' && 
       paymentStatus?.toLowerCase() == 'authorized';
+  
+  // ✅ NEW: Check if location data is complete
+  bool get hasCompleteLocationData => 
+      pickupLocation != null && 
+      pickupLatitude != null && 
+      pickupLongitude != null;
+  
+  bool get hasCompleteDriverLocationData => 
+      hasCompleteLocationData &&
+      dropoffLocation != null &&
+      dropoffLatitude != null &&
+      dropoffLongitude != null;
 }

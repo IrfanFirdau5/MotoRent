@@ -1,11 +1,18 @@
+// FILE: lib/screens/customer/booking_page.dart
+// ✅ UPDATED: Integrated OpenStreetMap location picker
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
+
 import '../../models/vehicle.dart';
 import '../../models/booking.dart';
 import '../../services/firebase_booking_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/location_picker_widget.dart';
 import 'stripe_payment_page.dart';
+
 
 class BookingPage extends StatefulWidget {
   final Vehicle vehicle;
@@ -23,7 +30,6 @@ class BookingPage extends StatefulWidget {
 
 class _BookingPageState extends State<BookingPage> {
   final FirebaseBookingService _bookingService = FirebaseBookingService();
-  final FirebaseBookingService _firebaseBookingService = FirebaseBookingService();
   final AuthService _authService = AuthService();
   
   DateTime _focusedDay = DateTime.now();
@@ -36,13 +42,16 @@ class _BookingPageState extends State<BookingPage> {
   
   // Driver hire option
   bool _needDriver = false;
-  final double _driverPricePerDay = 50.0; // RM50 per day for driver
+  final double _driverPricePerDay = 50.0;
 
-  // NEW: Location controllers for driver service
-  final TextEditingController _pickupLocationController = TextEditingController();
-  final TextEditingController _dropoffLocationController = TextEditingController();
+  // ✅ NEW: Location data
+  String _pickupLocationAddress = '';
+  LatLng? _pickupLocationCoords;
+  
+  String _dropoffLocationAddress = '';
+  LatLng? _dropoffLocationCoords;
 
-  // Blocked dates (example: already booked dates)
+  // Blocked dates
   final List<DateTime> _blockedDates = [];
 
   @override
@@ -58,10 +67,6 @@ class _BookingPageState extends State<BookingPage> {
     });
 
     try {
-      // For now, we'll implement a simple check
-      // In production, you'd fetch all existing bookings for this vehicle
-      // and mark those date ranges as blocked
-      
       setState(() {
         _isCheckingAvailability = false;
       });
@@ -72,12 +77,12 @@ class _BookingPageState extends State<BookingPage> {
       });
     }
   }
- @override
+
+  @override
   void dispose() {
-    _pickupLocationController.dispose();
-    _dropoffLocationController.dispose();
     super.dispose();
   }
+
   bool _isDayBlocked(DateTime day) {
     return _blockedDates.any((blockedDate) => isSameDay(blockedDate, day));
   }
@@ -129,6 +134,46 @@ class _BookingPageState extends State<BookingPage> {
     return days * _driverPricePerDay;
   }
 
+  // ✅ NEW: Open location picker for pickup
+  Future<void> _selectPickupLocation() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerWidget(
+          title: 'Select Pickup Location',
+          initialLocation: _pickupLocationCoords,
+          initialAddress: _pickupLocationAddress,
+          onLocationSelected: (location, address) {
+            setState(() {
+              _pickupLocationCoords = location;
+              _pickupLocationAddress = address;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  // ✅ NEW: Open location picker for dropoff
+  Future<void> _selectDropoffLocation() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerWidget(
+          title: 'Select Drop-off Location',
+          initialLocation: _dropoffLocationCoords,
+          initialAddress: _dropoffLocationAddress,
+          onLocationSelected: (location, address) {
+            setState(() {
+              _dropoffLocationCoords = location;
+              _dropoffLocationAddress = address;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleBooking() async {
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,21 +185,23 @@ class _BookingPageState extends State<BookingPage> {
       return;
     }
 
-    // Validate locations if driver is needed
+    // ✅ NEW: Validate pickup location (required for all bookings)
+    if (_pickupLocationAddress.isEmpty || _pickupLocationCoords == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a pickup location'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // ✅ Validate dropoff location if driver is needed
     if (_needDriver) {
-      if (_pickupLocationController.text.trim().isEmpty) {
+      if (_dropoffLocationAddress.isEmpty || _dropoffLocationCoords == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter pickup location'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-      if (_dropoffLocationController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter drop-off location'),
+            content: Text('Please select a drop-off location for driver service'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -177,15 +224,14 @@ class _BookingPageState extends State<BookingPage> {
     });
 
     try {
-      // Get current user details
       final currentUser = await _authService.getCurrentUser();
       
       if (currentUser == null) {
         throw Exception('User not logged in');
       }
 
-      // Create booking with Firebase
-      final result = await _firebaseBookingService.createBooking(
+      // ✅ Create booking with location coordinates
+      final result = await _bookingService.createBooking(
         userId: widget.userId,
         userName: currentUser.name,
         userPhone: currentUser.phone,
@@ -198,8 +244,12 @@ class _BookingPageState extends State<BookingPage> {
         totalPrice: _calculateTotalPrice(),
         needDriver: _needDriver,
         driverPrice: _needDriver ? _calculateDriverPrice() : null,
-        pickupLocation: _needDriver ? _pickupLocationController.text.trim() : null,
-        dropoffLocation: _needDriver ? _dropoffLocationController.text.trim() : null,
+        pickupLocation: _pickupLocationAddress,
+        pickupLatitude: _pickupLocationCoords!.latitude,
+        pickupLongitude: _pickupLocationCoords!.longitude,
+        dropoffLocation: _needDriver ? _dropoffLocationAddress : null,
+        dropoffLatitude: _needDriver ? _dropoffLocationCoords?.latitude : null,
+        dropoffLongitude: _needDriver ? _dropoffLocationCoords?.longitude : null,
       );
 
       setState(() {
@@ -209,17 +259,15 @@ class _BookingPageState extends State<BookingPage> {
       if (!mounted) return;
 
       if (result['success']) {
-        if (!mounted) return;
         Navigator.push(
-         context,
-        MaterialPageRoute(
-          builder: (context) => StripePaymentPage(
-            booking: result['booking'] as Booking,
-            vehicle: widget.vehicle,
+          context,
+          MaterialPageRoute(
+            builder: (context) => StripePaymentPage(
+              booking: result['booking'] as Booking,
+              vehicle: widget.vehicle,
+            ),
           ),
-         ),
         );
-        
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -258,9 +306,7 @@ class _BookingPageState extends State<BookingPage> {
         foregroundColor: Colors.white,
       ),
       body: _isCheckingAvailability
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,9 +397,7 @@ class _BookingPageState extends State<BookingPage> {
                     calendarFormat: _calendarFormat,
                     rangeSelectionMode: _rangeSelectionMode,
                     startingDayOfWeek: StartingDayOfWeek.monday,
-                    selectedDayPredicate: (day) {
-                      return isSameDay(_startDate, day);
-                    },
+                    selectedDayPredicate: (day) => isSameDay(_startDate, day),
                     rangeStartDay: _startDate,
                     rangeEndDay: _endDate,
                     onDaySelected: _onDaySelected,
@@ -403,177 +447,319 @@ class _BookingPageState extends State<BookingPage> {
 
                   const SizedBox(height: 20),
 
-            // Driver Option Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _needDriver ? const Color(0xFF1E88E5) : Colors.grey[300]!,
-                    width: _needDriver ? 2 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
+                  // ✅ NEW: Pickup Location Section (Always visible)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E88E5).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.drive_eta,
-                            color: Color(0xFF1E88E5),
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Need a Driver?',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'RM ${_driverPricePerDay.toStringAsFixed(2)}/day',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _needDriver,
-                          onChanged: (value) {
-                            setState(() {
-                              _needDriver = value;
-                            });
-                          },
-                          activeColor: const Color(0xFF1E88E5),
-                        ),
-                      ],
-                    ),
-                    if (_needDriver) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
+                        Row(
                           children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: Colors.blue[900],
+                            const Icon(
+                              Icons.location_on,
+                              color: Color(0xFF1E88E5),
+                              size: 24,
                             ),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'A professional driver will be assigned to you after booking confirmation.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue[900],
-                                ),
+                            const Text(
+                              'Pickup Location',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              ' *',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 18,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: _selectPickupLocation,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: _pickupLocationAddress.isEmpty
+                                    ? Colors.grey[300]!
+                                    : const Color(0xFF1E88E5),
+                                width: _pickupLocationAddress.isEmpty ? 1 : 2,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              color: _pickupLocationAddress.isEmpty
+                                  ? Colors.grey[50]
+                                  : Colors.blue[50],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _pickupLocationAddress.isEmpty
+                                      ? Icons.add_location
+                                      : Icons.edit_location,
+                                  color: const Color(0xFF1E88E5),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _pickupLocationAddress.isEmpty
+                                            ? 'Tap to select pickup location'
+                                            : _pickupLocationAddress,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: _pickupLocationAddress.isEmpty
+                                              ? Colors.grey[600]
+                                              : Colors.black87,
+                                          fontWeight: _pickupLocationAddress.isEmpty
+                                              ? FontWeight.normal
+                                              : FontWeight.w500,
+                                        ),
+                                      ),
+                                      if (_pickupLocationCoords != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Lat: ${_pickupLocationCoords!.latitude.toStringAsFixed(6)}, '
+                                          'Lng: ${_pickupLocationCoords!.longitude.toStringAsFixed(6)}',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Color(0xFF1E88E5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-            // NEW: Location fields when driver is needed
-            if (_needDriver) ...[
-              const SizedBox(height: 20),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Driver Service Details',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  const SizedBox(height: 20),
+
+                  // Driver Option Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _needDriver ? const Color(0xFF1E88E5) : Colors.grey[300]!,
+                          width: _needDriver ? 2 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E88E5).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.drive_eta,
+                                  color: Color(0xFF1E88E5),
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Need a Driver?',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'RM ${_driverPricePerDay.toStringAsFixed(2)}/day',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _needDriver,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _needDriver = value;
+                                  });
+                                },
+                                activeColor: const Color(0xFF1E88E5),
+                              ),
+                            ],
+                          ),
+                          if (_needDriver) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: Colors.blue[900],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'A professional driver will be assigned to you after booking confirmation.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[900],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    
-                    // Pickup Location Field
-                    TextFormField(
-                      controller: _pickupLocationController,
-                      decoration: InputDecoration(
-                        labelText: 'Pickup Location *',
-                        hintText: 'Enter your pickup address',
-                        prefixIcon: const Icon(Icons.location_on),
-                        helperText: 'Where should the driver pick up the car?',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
+                  ),
+
+                  // ✅ NEW: Dropoff Location (only if driver needed)
+                  if (_needDriver) ...[
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                color: Color(0xFF1E88E5),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Drop-off Location',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text(
+                                ' *',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Dropoff Location Field
-                    TextFormField(
-                      controller: _dropoffLocationController,
-                      decoration: InputDecoration(
-                        labelText: 'Drop-off Location *',
-                        hintText: 'Enter your destination address',
-                        prefixIcon: const Icon(Icons.location_on_outlined),
-                        helperText: 'Where should the driver drop off the car?',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
+                          const SizedBox(height: 12),
+                          InkWell(
+                            onTap: _selectDropoffLocation,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: _dropoffLocationAddress.isEmpty
+                                      ? Colors.grey[300]!
+                                      : const Color(0xFF1E88E5),
+                                  width: _dropoffLocationAddress.isEmpty ? 1 : 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                color: _dropoffLocationAddress.isEmpty
+                                    ? Colors.grey[50]
+                                    : Colors.blue[50],
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _dropoffLocationAddress.isEmpty
+                                        ? Icons.add_location
+                                        : Icons.edit_location,
+                                    color: const Color(0xFF1E88E5),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _dropoffLocationAddress.isEmpty
+                                              ? 'Tap to select drop-off location'
+                                              : _dropoffLocationAddress,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: _dropoffLocationAddress.isEmpty
+                                                ? Colors.grey[600]
+                                                : Colors.black87,
+                                            fontWeight: _dropoffLocationAddress.isEmpty
+                                                ? FontWeight.normal
+                                                : FontWeight.w500,
+                                          ),
+                                        ),
+                                        if (_dropoffLocationCoords != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Lat: ${_dropoffLocationCoords!.latitude.toStringAsFixed(6)}, '
+                                            'Lng: ${_dropoffLocationCoords!.longitude.toStringAsFixed(6)}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Color(0xFF1E88E5),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      maxLines: 2,
                     ),
                   ],
-                ),
-              ),
-            ],
 
                   const SizedBox(height: 20),
 
@@ -719,7 +905,10 @@ class _BookingPageState extends State<BookingPage> {
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        onPressed: (_startDate != null && _endDate != null && !_isLoading)
+                        onPressed: (_startDate != null && 
+                                    _endDate != null && 
+                                    !_isLoading &&
+                                    _pickupLocationAddress.isNotEmpty)
                             ? _handleBooking
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -741,7 +930,7 @@ class _BookingPageState extends State<BookingPage> {
                             : Text(
                                 days > 0
                                     ? 'Confirm Booking - RM ${totalPrice.toStringAsFixed(2)}'
-                                    : 'Select Dates to Continue',
+                                    : 'Select Dates & Location to Continue',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
