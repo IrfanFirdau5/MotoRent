@@ -425,9 +425,9 @@ class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
         ),
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )

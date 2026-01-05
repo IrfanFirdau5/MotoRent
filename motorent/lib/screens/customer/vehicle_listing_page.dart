@@ -35,7 +35,7 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
   String _errorMessage = '';
   
   // ✅ NEW: Store actual review data
-  Map<String, Map<String, dynamic>> _vehicleReviewData = {};
+  final Map<String, Map<String, dynamic>> _vehicleReviewData = {};
   
   // Filter variables
   String _selectedBrand = 'All';
@@ -448,9 +448,9 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         ],
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )

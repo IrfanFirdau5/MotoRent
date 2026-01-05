@@ -459,9 +459,9 @@ class _DriverEarningsPageState extends State<DriverEarningsPage> {
         elevation: 0,
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )
@@ -740,9 +740,9 @@ class _DriverEarningsPageState extends State<DriverEarningsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Withdrawal Request',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

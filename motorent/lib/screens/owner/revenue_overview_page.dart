@@ -93,7 +93,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) throw Exception('User not logged in');
 
-      print('🔍 Loading revenue from vehicle_revenue collection');
 
       final now = DateTime.now();
       
@@ -103,10 +102,8 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
         year: now.year,
       );
 
-      print('📦 Found ${revenueData.length} revenue records');
 
       if (revenueData.isEmpty) {
-        print('ℹ️  No revenue data - checking if backfill needed...');
         
         final completedBookings = await FirebaseFirestore.instance
             .collection('bookings')
@@ -117,7 +114,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
             .get();
         
         if (completedBookings.docs.isNotEmpty) {
-          print('⚠️  Found unrecorded bookings - suggesting backfill');
           setState(() {
             _errorMessage = 'Revenue data needs to be backfilled. Tap the refresh button to backfill.';
             _isLoading = false;
@@ -155,7 +151,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
         }
       }
 
-      print('✅ Revenue loaded successfully');
 
       setState(() {
         _vehicleRevenues = vehicleRevenues;
@@ -168,7 +163,6 @@ class _RevenueOverviewPageState extends State<RevenueOverviewPage> {
       });
 
     } catch (e, stackTrace) {
-      print('❌ Error: $e\n$stackTrace');
       setState(() {
         _errorMessage = 'Failed to load revenue data: $e';
         _isLoading = false;

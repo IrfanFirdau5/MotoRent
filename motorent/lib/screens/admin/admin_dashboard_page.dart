@@ -138,9 +138,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ],
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )
@@ -456,7 +456,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AdminDriverPaymentsPage(
+                                builder: (context) => const AdminDriverPaymentsPage(
                                   adminId: 'admin_user_id',
                                 ),
                               ),

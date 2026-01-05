@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ManageCompanyDriversPage extends StatefulWidget {
   final int ownerId;
   
-  ManageCompanyDriversPage({
+  const ManageCompanyDriversPage({
     Key? key,
     required this.ownerId,
   }) : super(key: key);

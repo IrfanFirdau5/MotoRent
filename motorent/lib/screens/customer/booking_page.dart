@@ -71,7 +71,6 @@ class _BookingPageState extends State<BookingPage> {
         _isCheckingAvailability = false;
       });
     } catch (e) {
-      print('Error loading blocked dates: $e');
       setState(() {
         _isCheckingAvailability = false;
       });
@@ -453,22 +452,22 @@ class _BookingPageState extends State<BookingPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        const Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.location_on,
                               color: Color(0xFF1E88E5),
                               size: 24,
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
+                            SizedBox(width: 8),
+                            Text(
                               'Pickup Location',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const Text(
+                            Text(
                               ' *',
                               style: TextStyle(
                                 color: Colors.red,
@@ -664,22 +663,22 @@ class _BookingPageState extends State<BookingPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          const Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.location_on_outlined,
                                 color: Color(0xFF1E88E5),
                                 size: 24,
                               ),
-                              const SizedBox(width: 8),
-                              const Text(
+                              SizedBox(width: 8),
+                              Text(
                                 'Drop-off Location',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 ' *',
                                 style: TextStyle(
                                   color: Colors.red,
