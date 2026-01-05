@@ -1,5 +1,5 @@
 // FILE: motorent/lib/screens/login_page.dart
-// UPDATE THE _navigateToUserPage METHOD (around line 120-150)
+// UPDATED: Added MotoRent logo
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -99,7 +99,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ✅ UPDATE THIS METHOD - PASS USER TO VehicleListingPage
   void _navigateToUserPage(User user) {
     Widget destinationPage;
 
@@ -118,7 +117,6 @@ class _LoginPageState extends State<LoginPage> {
         break;
       case 'customer':
       default:
-        // ✅ THIS IS THE KEY CHANGE - PASS user PARAMETER
         destinationPage = VehicleListingPage(user: user);
         break;
     }
@@ -174,10 +172,18 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.directions_car,
-                    size: 100,
-                    color: const Color(0xFF1E88E5),
+                  // ✅ UPDATED: Use logo image instead of icon
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 150,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to icon if logo not found
+                      return Icon(
+                        Icons.directions_car,
+                        size: 100,
+                        color: const Color(0xFF1E88E5),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                   

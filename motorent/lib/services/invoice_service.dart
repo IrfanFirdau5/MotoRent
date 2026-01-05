@@ -1,4 +1,9 @@
+// FILE: motorent/lib/services/invoice_service.dart
+// UPDATED: Added MotoRent logo to invoice PDF
+
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -19,6 +24,13 @@ class InvoiceService {
   }) async {
     final pdf = pw.Document();
 
+    // ✅ Load logo image
+    final Uint8List? logoData = await _loadLogo();
+    pw.ImageProvider? logo;
+    if (logoData != null) {
+      logo = pw.MemoryImage(logoData);
+    }
+
     // Add invoice page
     pdf.addPage(
       pw.Page(
@@ -29,31 +41,37 @@ class InvoiceService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Header with Logo placeholder and Title
+                // Header with Logo and Title
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    // Logo area
-                    pw.Container(
-                      width: 100,
-                      height: 100,
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey300, width: 2),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-                      ),
-                      child: pw.Center(
-                        child: pw.Text(
-                          'LOGO\nHERE',
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            color: PdfColors.grey500,
-                            fontWeight: pw.FontWeight.bold,
+                    // ✅ UPDATED: Use actual logo instead of placeholder
+                    logo != null
+                        ? pw.Container(
+                            width: 100,
+                            height: 100,
+                            child: pw.Image(logo, fit: pw.BoxFit.contain),
+                          )
+                        : pw.Container(
+                            width: 100,
+                            height: 100,
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey300, width: 2),
+                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                            ),
+                            child: pw.Center(
+                              child: pw.Text(
+                                'LOGO\nHERE',
+                                textAlign: pw.TextAlign.center,
+                                style: pw.TextStyle(
+                                  fontSize: 14,
+                                  color: PdfColors.grey500,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
                     
                     // Invoice title and company info
                     pw.Column(
@@ -336,27 +354,42 @@ class InvoiceService {
                 
                 pw.Spacer(),
                 
-                // Footer
+                // Footer with logo
                 pw.Divider(color: PdfColors.grey400),
                 pw.SizedBox(height: 10),
-                pw.Center(
-                  child: pw.Text(
-                    'MOTORENT',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
+                
+                // ✅ UPDATED: Add logo to footer if available
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    if (logo != null)
+                      pw.Container(
+                        width: 40,
+                        height: 40,
+                        margin: const pw.EdgeInsets.only(right: 12),
+                        child: pw.Image(logo, fit: pw.BoxFit.contain),
+                      ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          'MOTORENT',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'THANK YOU FOR YOUR BUSINESS.',
+                          style: const pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                pw.SizedBox(height: 4),
-                pw.Center(
-                  child: pw.Text(
-                    'THANK YOU FOR YOUR BUSINESS.',
-                    style: const pw.TextStyle(
-                      fontSize: 10,
-                      color: PdfColors.grey600,
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -371,6 +404,17 @@ class InvoiceService {
     await file.writeAsBytes(await pdf.save());
 
     return file;
+  }
+
+  /// ✅ NEW: Load logo from assets
+  Future<Uint8List?> _loadLogo() async {
+    try {
+      final ByteData data = await rootBundle.load('assets/images/logo.png');
+      return data.buffer.asUint8List();
+    } catch (e) {
+      print('⚠️  Could not load logo for invoice: $e');
+      return null;
+    }
   }
 
   /// Helper: Build table cell
@@ -437,7 +481,6 @@ class InvoiceService {
   /// Save invoice to device storage
   Future<String?> saveInvoiceToStorage(File pdfFile) async {
     try {
-
       return pdfFile.path;
     } catch (e) {
       return null;
