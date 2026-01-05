@@ -17,7 +17,6 @@ class SubscriptionService {
   /// Get user's current subscription
   Future<Subscription?> getUserSubscription(String userId) async {
     try {
-      print('🔍 Fetching subscription for user: $userId');
 
       final querySnapshot = await _firestore
           .collection(_subscriptionsCollection)
@@ -27,7 +26,6 @@ class SubscriptionService {
           .get();
 
       if (querySnapshot.docs.isEmpty) {
-        print('ℹ️  No subscription found - user is on free plan');
         return _createFreeSubscription(userId);
       }
 
@@ -64,10 +62,8 @@ class SubscriptionService {
 
       final subscription = Subscription.fromJson(data);
       
-      print('✅ Subscription found: ${subscription.plan} - ${subscription.status}');
       return subscription;
     } catch (e) {
-      print('❌ Error fetching subscription: $e');
       return _createFreeSubscription(userId);
     }
   }
@@ -101,13 +97,6 @@ class SubscriptionService {
     required String userName,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('💎 CREATING PRO SUBSCRIPTION');
-      print('═══════════════════════════════════════');
-      print('User ID: $userId');
-      print('Email: $userEmail');
-      print('Amount: RM $proMonthlyPrice');
 
       // Create or get Stripe customer
       final customer = await _stripeService.createCustomer(
@@ -127,7 +116,6 @@ class SubscriptionService {
       }
 
       final customerId = customer['id'];
-      print('✅ Stripe Customer ID: $customerId');
 
       // Create payment intent for subscription
       final paymentIntent = await _stripeService.createPaymentIntent(
@@ -154,9 +142,6 @@ class SubscriptionService {
       final paymentIntentId = paymentIntent['id'];
       final clientSecret = paymentIntent['client_secret'];
 
-      print('✅ Payment Intent created: $paymentIntentId');
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'success': true,
@@ -167,7 +152,6 @@ class SubscriptionService {
         'message': 'Payment intent created successfully',
       };
     } catch (e) {
-      print('❌ Error creating Pro subscription: $e');
       return {
         'success': false,
         'message': 'Error: $e',
@@ -182,12 +166,6 @@ class SubscriptionService {
     required String stripeCustomerId,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('✅ ACTIVATING PRO SUBSCRIPTION');
-      print('═══════════════════════════════════════');
-      print('User ID: $userId');
-      print('Payment Intent: $paymentIntentId');
 
       // Calculate subscription dates
       final now = DateTime.now();
@@ -215,11 +193,6 @@ class SubscriptionService {
           .collection(_subscriptionsCollection)
           .add(subscriptionData);
 
-      print('✅ Subscription activated!');
-      print('   Subscription ID: ${docRef.id}');
-      print('   Valid until: ${endDate.toString()}');
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'success': true,
@@ -228,7 +201,6 @@ class SubscriptionService {
         'end_date': endDate.toIso8601String(),
       };
     } catch (e) {
-      print('❌ Error activating subscription: $e');
       return {
         'success': false,
         'message': 'Failed to activate subscription: $e',
@@ -258,7 +230,6 @@ class SubscriptionService {
         'message': 'Subscription cancelled successfully',
       };
     } catch (e) {
-      print('❌ Error cancelling subscription: $e');
       return {
         'success': false,
         'message': 'Failed to cancel subscription: $e',
@@ -282,10 +253,8 @@ class SubscriptionService {
           'status': 'expired',
           'updated_at': FieldValue.serverTimestamp(),
         });
-        print('⏰ Subscription expired: ${doc.id}');
       }
     } catch (e) {
-      print('❌ Error checking expired subscriptions: $e');
     }
   }
 
@@ -320,7 +289,6 @@ class SubscriptionService {
         'total_revenue': totalRevenue,
       };
     } catch (e) {
-      print('❌ Error getting subscription stats: $e');
       return {
         'total_subscriptions': 0,
         'active_subscriptions': 0,

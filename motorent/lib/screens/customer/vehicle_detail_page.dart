@@ -47,14 +47,12 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     });
 
     try {
-      print('🔍 Loading reviews for vehicle: ${widget.vehicle.vehicleId}');
       
       // Fetch all reviews
       final allReviews = await _reviewService.fetchVehicleReviews(
         widget.vehicle.vehicleId.toString()
       );
       
-      print('✅ Found ${allReviews.length} reviews');
       
       // Calculate rating distribution
       Map<int, int> distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
@@ -79,10 +77,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         _loadingReviews = false;
       });
       
-      print('✅ Loaded ${allReviews.length} reviews (showing ${_recentReviews.length})');
-      print('   Average rating: ${avgRating?.toStringAsFixed(1) ?? "N/A"}');
     } catch (e) {
-      print('❌ Error loading reviews: $e');
       setState(() {
         _loadingReviews = false;
       });

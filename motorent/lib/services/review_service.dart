@@ -19,12 +19,6 @@ class ReviewService {
     required String userName,
   }) async {
     try {
-      print('📝 Submitting review to Firestore:');
-      print('   Collection: $_reviewsCollection');
-      print('   Booking ID: $bookingId');
-      print('   User ID: $userId');
-      print('   Vehicle ID: $vehicleId');
-      print('   Rating: $rating');
       
       // Check if user has already reviewed this booking
       final existingReview = await _firestore
@@ -34,7 +28,6 @@ class ReviewService {
           .get();
 
       if (existingReview.docs.isNotEmpty) {
-        print('⚠️  User has already reviewed this booking');
         return {
           'success': false,
           'message': 'You have already reviewed this booking',
@@ -52,14 +45,10 @@ class ReviewService {
         'created_at': FieldValue.serverTimestamp(),
       };
 
-      print('   Creating review document...');
       final docRef = await _firestore.collection(_reviewsCollection).add(reviewData);
-      print('✅ Review created with ID: ${docRef.id}');
 
       // Update vehicle rating statistics
-      print('   Updating vehicle rating stats...');
       await _updateVehicleRatingStats(vehicleId);
-      print('✅ Vehicle stats updated');
 
       return {
         'success': true,
@@ -67,7 +56,6 @@ class ReviewService {
         'review_id': docRef.id,
       };
     } catch (e) {
-      print('❌ Error submitting review: $e');
       return {
         'success': false,
         'message': 'Failed to submit review: $e',
@@ -78,7 +66,6 @@ class ReviewService {
   // Fetch reviews for a specific vehicle
   Future<List<Review>> fetchVehicleReviews(String vehicleId) async {
     try {
-      print('🔍 Fetching reviews for vehicle: $vehicleId');
       
       final querySnapshot = await _firestore
           .collection(_reviewsCollection)
@@ -86,7 +73,6 @@ class ReviewService {
           .orderBy('created_at', descending: true)
           .get();
 
-      print('✅ Found ${querySnapshot.docs.length} reviews');
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data();
@@ -100,7 +86,6 @@ class ReviewService {
         return Review.fromJson(data);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching vehicle reviews: $e');
       throw Exception('Failed to load reviews: $e');
     }
   }
@@ -108,7 +93,6 @@ class ReviewService {
   // Fetch user's own reviews
   Future<List<Review>> fetchUserReviews(String userId) async {
     try {
-      print('🔍 Fetching reviews for user: $userId');
       
       final querySnapshot = await _firestore
           .collection(_reviewsCollection)
@@ -116,7 +100,6 @@ class ReviewService {
           .orderBy('created_at', descending: true)
           .get();
 
-      print('✅ Found ${querySnapshot.docs.length} reviews');
 
       // Fetch vehicle names for each review
       final reviews = await Future.wait(querySnapshot.docs.map((doc) async {
@@ -135,7 +118,6 @@ class ReviewService {
             data['vehicle_name'] = '${vehicleData['brand']} ${vehicleData['model']}';
           }
         } catch (e) {
-          print('⚠️  Could not fetch vehicle name: $e');
         }
         
         // Handle Timestamp conversion
@@ -148,7 +130,6 @@ class ReviewService {
 
       return reviews;
     } catch (e) {
-      print('❌ Error fetching user reviews: $e');
       throw Exception('Failed to load reviews: $e');
     }
   }
@@ -167,7 +148,6 @@ class ReviewService {
 
       return querySnapshot.docs.isNotEmpty;
     } catch (e) {
-      print('❌ Error checking review status: $e');
       return false;
     }
   }
@@ -194,7 +174,6 @@ class ReviewService {
       
       return Review.fromJson(data);
     } catch (e) {
-      print('❌ Error getting review: $e');
       return null;
     }
   }
@@ -207,7 +186,6 @@ class ReviewService {
     required String vehicleId,
   }) async {
     try {
-      print('📝 Updating review: $reviewId');
       
       await _firestore.collection(_reviewsCollection).doc(reviewId).update({
         'rating': rating,
@@ -215,14 +193,12 @@ class ReviewService {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Review updated');
 
       // Update vehicle rating statistics
       await _updateVehicleRatingStats(vehicleId);
 
       return true;
     } catch (e) {
-      print('❌ Error updating review: $e');
       return false;
     }
   }
@@ -230,18 +206,15 @@ class ReviewService {
   // Delete a review
   Future<bool> deleteReview(String reviewId, String vehicleId) async {
     try {
-      print('🗑️  Deleting review: $reviewId');
       
       await _firestore.collection(_reviewsCollection).doc(reviewId).delete();
 
-      print('✅ Review deleted');
 
       // Update vehicle rating statistics
       await _updateVehicleRatingStats(vehicleId);
 
       return true;
     } catch (e) {
-      print('❌ Error deleting review: $e');
       return false;
     }
   }
@@ -257,7 +230,6 @@ class ReviewService {
           'rating': null,
           'review_count': 0,
         });
-        print('   Vehicle has no reviews - cleared stats');
         return;
       }
 
@@ -271,9 +243,7 @@ class ReviewService {
         'review_count': reviews.length,
       });
       
-      print('   Updated vehicle rating: ${averageRating.toStringAsFixed(1)} (${reviews.length} reviews)');
     } catch (e) {
-      print('⚠️  Error updating vehicle stats: $e');
     }
   }
 
@@ -306,7 +276,6 @@ class ReviewService {
         'rating_distribution': distribution,
       };
     } catch (e) {
-      print('❌ Error getting rating summary: $e');
       return {
         'average_rating': 0.0,
         'total_reviews': 0,

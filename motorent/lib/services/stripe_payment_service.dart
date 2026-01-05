@@ -15,14 +15,9 @@ class StripePaymentService {
   // Verify configuration on service initialization
   StripePaymentService() {
     if (!PaymentConfig.isConfigured) {
-      print('❌ StripePaymentService: Configuration error!');
-      print('⚠️  Make sure .env file exists with valid Stripe keys.');
     } else {
-      print('✅ StripePaymentService initialized successfully');
       if (PaymentConfig.isTestMode) {
-        print('🧪 Running in TEST mode');
       } else {
-        print('🚀 Running in LIVE mode');
       }
     }
   }
@@ -45,9 +40,6 @@ class StripePaymentService {
       // Convert amount to cents (Stripe expects smallest currency unit)
       final amountInCents = (amount * 100).toInt();
 
-      print('💳 Creating Payment Intent...');
-      print('   Amount: $currency ${amount.toStringAsFixed(2)} ($amountInCents cents)');
-      print('   Capture Method: ${captureMethod ? 'Automatic' : 'Manual (Hold)'}');
 
       // ✅ Build body with proper metadata formatting + capture_method
       final body = <String, String>{
@@ -79,17 +71,11 @@ class StripePaymentService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Payment Intent created: ${data['id']}');
-        print('   Status: ${data['status']}');
-        print('   Capture Method: ${data['capture_method']}');
         return data;
       } else {
-        print('❌ Payment Intent creation failed: ${response.statusCode}');
-        print('   Response: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('❌ Error creating Payment Intent: $e');
       return null;
     }
   }
@@ -101,11 +87,6 @@ class StripePaymentService {
         throw Exception('Stripe is not configured. Check your .env file.');
       }
 
-      print('');
-      print('═══════════════════════════════════════');
-      print('💰 CAPTURING HELD PAYMENT');
-      print('═══════════════════════════════════════');
-      print('Payment Intent ID: $paymentIntentId');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/capture'),
@@ -117,23 +98,11 @@ class StripePaymentService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Payment captured successfully!');
-        print('   Amount Received: ${data['amount_received']} ${data['currency']}');
-        print('   Status: ${data['status']}');
-        print('═══════════════════════════════════════');
-        print('');
         return data;
       } else {
-        print('❌ Failed to capture payment: ${response.statusCode}');
-        print('   Response: ${response.body}');
-        print('═══════════════════════════════════════');
-        print('');
         return null;
       }
     } catch (e) {
-      print('❌ Error capturing payment: $e');
-      print('═══════════════════════════════════════');
-      print('');
       return null;
     }
   }
@@ -150,8 +119,6 @@ class StripePaymentService {
         throw Exception('Stripe is not configured. Check your .env file.');
       }
 
-      print('👤 Creating Stripe Customer...');
-      print('   Email: $email');
 
       // ✅ Build body with proper metadata formatting
       final body = <String, String>{
@@ -184,15 +151,11 @@ class StripePaymentService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Customer created: ${data['id']}');
         return data;
       } else {
-        print('❌ Customer creation failed: ${response.statusCode}');
-        print('   Response: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('❌ Error creating customer: $e');
       return null;
     }
   }
@@ -214,11 +177,9 @@ class StripePaymentService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        print('❌ Failed to retrieve Payment Intent: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('❌ Error retrieving Payment Intent: $e');
       return null;
     }
   }
@@ -230,11 +191,6 @@ class StripePaymentService {
         throw Exception('Stripe is not configured. Check your .env file.');
       }
 
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚫 CANCELLING PAYMENT AUTHORIZATION');
-      print('═══════════════════════════════════════');
-      print('Payment Intent ID: $paymentIntentId');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/cancel'),
@@ -246,23 +202,11 @@ class StripePaymentService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Payment authorization cancelled successfully');
-        print('   Status: ${data['status']}');
-        print('   Funds released back to customer');
-        print('═══════════════════════════════════════');
-        print('');
         return true;
       } else {
-        print('❌ Failed to cancel Payment Intent: ${response.statusCode}');
-        print('   Response: ${response.body}');
-        print('═══════════════════════════════════════');
-        print('');
         return false;
       }
     } catch (e) {
-      print('❌ Error canceling Payment Intent: $e');
-      print('═══════════════════════════════════════');
-      print('');
       return false;
     }
   }
@@ -278,11 +222,8 @@ class StripePaymentService {
         throw Exception('Stripe is not configured. Check your .env file.');
       }
 
-      print('💰 Creating refund for Payment Intent: $paymentIntentId');
       if (amount != null) {
-        print('   Amount: $amount cents');
       } else {
-        print('   Amount: Full refund');
       }
 
       final body = {
@@ -302,15 +243,11 @@ class StripePaymentService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Refund created: ${data['id']}');
         return data;
       } else {
-        print('❌ Refund creation failed: ${response.statusCode}');
-        print('   Response: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('❌ Error creating refund: $e');
       return null;
     }
   }
@@ -348,16 +285,6 @@ class StripePaymentService {
     Map<String, dynamic>? additionalMetadata,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚗 PROCESSING BOOKING PAYMENT (AUTHORIZATION)');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
-      print('Amount: $currency ${totalAmount.toStringAsFixed(2)}');
-      print('Customer: $customerName ($customerEmail)');
-      print('Vehicle: $vehicleName');
-      print('Mode: AUTHORIZATION (Funds will be HELD)');
-      print('═══════════════════════════════════════');
 
       // Create or get customer
       final customer = await createCustomer(
@@ -377,7 +304,6 @@ class StripePaymentService {
       }
 
       final customerId = customer['id'];
-      print('✅ Customer ID: $customerId');
 
       // Create payment intent with MANUAL capture (hold funds)
       final paymentIntent = await createPaymentIntent(
@@ -404,12 +330,6 @@ class StripePaymentService {
       final clientSecret = paymentIntent['client_secret'];
       final paymentIntentId = paymentIntent['id'];
 
-      print('✅ Payment Intent created (AUTHORIZATION mode)!');
-      print('   Payment Intent ID: $paymentIntentId');
-      print('   Status: ${paymentIntent['status']}');
-      print('   Capture Method: ${paymentIntent['capture_method']}');
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'success': true,
@@ -422,7 +342,6 @@ class StripePaymentService {
         'message': 'Payment intent created successfully (funds will be held)',
       };
     } catch (e) {
-      print('❌ Error processing booking payment: $e');
       return {
         'success': false,
         'message': 'Error: $e',
@@ -439,14 +358,6 @@ class StripePaymentService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('💳 PROCESSING PAYMENT (AUTHORIZATION)');
-      print('═══════════════════════════════════════');
-      print('Amount: $currency ${amount.toStringAsFixed(2)}');
-      print('Description: ${description ?? 'Payment'}');
-      print('Mode: AUTHORIZATION (Funds will be HELD)');
-      print('═══════════════════════════════════════');
 
       // Create payment intent with MANUAL capture (hold funds)
       final paymentIntent = await createPaymentIntent(
@@ -458,7 +369,6 @@ class StripePaymentService {
       );
 
       if (paymentIntent == null) {
-        print('❌ Failed to create payment intent');
         return {
           'success': false,
           'error': 'Failed to create payment intent',
@@ -468,12 +378,6 @@ class StripePaymentService {
       final clientSecret = paymentIntent['client_secret'];
       final paymentIntentId = paymentIntent['id'];
 
-      print('✅ Payment Intent created (AUTHORIZATION mode)!');
-      print('   ID: $paymentIntentId');
-      print('   Status: ${paymentIntent['status']}');
-      print('   Capture Method: ${paymentIntent['capture_method']}');
-      print('═══════════════════════════════════════');
-      print('');
 
       // Return the client secret for frontend to confirm payment
       return {
@@ -485,7 +389,6 @@ class StripePaymentService {
         'status': paymentIntent['status'],
       };
     } catch (e) {
-      print('❌ Error processing payment: $e');
       return {
         'success': false,
         'error': e.toString(),
@@ -497,31 +400,24 @@ class StripePaymentService {
   /// This should be implemented on your backend server
   static Future<void> handleWebhookEvent(Map<String, dynamic> event) async {
     final eventType = event['type'];
-    print('📥 Webhook received: $eventType');
 
     switch (eventType) {
       case 'payment_intent.succeeded':
-        print('✅ Payment succeeded!');
         // TODO: Update booking status in Firebase
         break;
       case 'payment_intent.payment_failed':
-        print('❌ Payment failed!');
         // TODO: Handle payment failure
         break;
       case 'payment_intent.canceled':
-        print('🚫 Payment cancelled!');
         // TODO: Handle cancellation
         break;
       case 'charge.refunded':
-        print('💰 Charge refunded!');
         // TODO: Handle refund
         break;
       case 'payment_intent.amount_capturable_updated':
-        print('💳 Payment authorized (funds held)!');
         // TODO: Notify owner to approve booking
         break;
       default:
-        print('ℹ️  Unhandled event type: $eventType');
     }
   }
 }

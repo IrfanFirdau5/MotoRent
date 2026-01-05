@@ -92,7 +92,6 @@ class FirebaseRevenueService {
         'utilization': utilizationRate,
       };
     } catch (e) {
-      print('Error calculating monthly revenue: $e');
       return {
         'success': false,
         'message': 'Failed to calculate revenue: $e',
@@ -125,7 +124,6 @@ class FirebaseRevenueService {
         return VehicleRevenueData.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching owner revenue: $e');
       throw Exception('Failed to load revenue data: $e');
     }
   }
@@ -154,7 +152,6 @@ class FirebaseRevenueService {
         return VehicleRevenueData.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching vehicle revenue history: $e');
       throw Exception('Failed to load revenue history: $e');
     }
   }
@@ -204,7 +201,6 @@ class FirebaseRevenueService {
         'total_vehicles': revenueData.length,
       };
     } catch (e) {
-      print('Error getting owner revenue stats: $e');
       return {
         'total_revenue': 0.0,
         'total_payment': 0.0,
@@ -248,7 +244,6 @@ class FirebaseRevenueService {
 
       return true;
     } catch (e) {
-      print('Error updating monthly payment: $e');
       return false;
     }
   }
@@ -284,7 +279,6 @@ class FirebaseRevenueService {
 
       return trend;
     } catch (e) {
-      print('Error generating revenue trend: $e');
       return [];
     }
   }

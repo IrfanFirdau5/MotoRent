@@ -45,7 +45,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
         throw Exception('User not logged in');
       }
 
-      print('🔍 Loading vehicles for owner: ${currentUser.uid}');
 
       // Fetch vehicles
       final querySnapshot = await FirebaseFirestore.instance
@@ -53,7 +52,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
           .where('owner_id', isEqualTo: currentUser.uid)
           .get();
 
-      print('📦 Raw query returned: ${querySnapshot.docs.length} documents');
 
       // Filter out deleted vehicles and convert to Vehicle objects
       final vehicles = querySnapshot.docs
@@ -74,23 +72,17 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
             }
             
             // ✅ DEBUG: Print rating data
-            print('Vehicle ${data['brand']} ${data['model']}:');
-            print('  rating: ${data['rating']} (type: ${data['rating']?.runtimeType})');
-            print('  review_count: ${data['review_count']}');
             
             return Vehicle.fromJson(data);
           })
           .toList();
 
-      print('✅ Filtered to ${vehicles.length} non-deleted vehicles');
       
       setState(() {
         _vehicles = vehicles;
         _isLoading = false;
       });
     } catch (e, stackTrace) {
-      print('❌ Error loading vehicles: $e');
-      print('Stack trace: $stackTrace');
       
       setState(() {
         _errorMessage = 'Failed to load vehicles: $e';
@@ -111,7 +103,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
     try {
       final newStatus = vehicle.isAvailable ? 'unavailable' : 'available';
       
-      print('🔄 Toggling availability to: $newStatus');
 
       await FirebaseFirestore.instance
           .collection('vehicles')
@@ -121,7 +112,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Status updated successfully');
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -140,7 +130,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       _loadVehicles();
 
     } catch (e) {
-      print('❌ Error updating status: $e');
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -198,7 +187,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
     );
 
     try {
-      print('🗑️ Deleting vehicle: ${vehicle.vehicleId}');
 
       await FirebaseFirestore.instance
           .collection('vehicles')
@@ -209,7 +197,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Vehicle deleted successfully');
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -224,7 +211,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       _loadVehicles();
 
     } catch (e) {
-      print('❌ Error deleting vehicle: $e');
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -431,10 +417,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
     final displayRating = hasRating ? rating : 0.0;
     final reviewCount = vehicle.reviewCount ?? 0;
 
-    print('🎨 Rendering card for ${vehicle.fullName}:');
-    print('   hasRating: $hasRating');
-    print('   displayRating: $displayRating');
-    print('   reviewCount: $reviewCount');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),

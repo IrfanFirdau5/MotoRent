@@ -57,7 +57,6 @@ class FirebaseCompanyDriverService {
         'message': 'Company driver added successfully!',
       };
     } catch (e) {
-      print('Error adding company driver: $e');
       return {
         'success': false,
         'message': 'Failed to add driver: $e',
@@ -69,7 +68,6 @@ class FirebaseCompanyDriverService {
 // Fetch owner's company drivers
 Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
   try {
-    print('🔍 Fetching company drivers for owner: $ownerId');
     
     final querySnapshot = await _firestore
         .collection(_driversCollection)
@@ -77,10 +75,8 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
         .orderBy('created_at', descending: true)
         .get();
 
-    print('✅ Found ${querySnapshot.docs.length} company drivers');
 
     if (querySnapshot.docs.isEmpty) {
-      print('ℹ️  No company drivers found for owner: $ownerId');
       return [];
     }
 
@@ -98,11 +94,9 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       return CompanyDriver.fromJson(data);
     }).toList();
   } catch (e) {
-    print('❌ Error fetching company drivers: $e');
     
     // If index error, return empty
     if (e.toString().contains('index')) {
-      print('⚠️  Index required - check console for link to create it');
       return [];
     }
     
@@ -120,7 +114,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       
       return true;
     } catch (e) {
-      print('Error updating driver status: $e');
       return false;
     }
   }
@@ -136,7 +129,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       
       return true;
     } catch (e) {
-      print('Error toggling driver status: $e');
       return false;
     }
   }
@@ -165,7 +157,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       
       return true;
     } catch (e) {
-      print('Error updating driver details: $e');
       return false;
     }
   }
@@ -176,7 +167,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       await _firestore.collection(_driversCollection).doc(driverId).delete();
       return true;
     } catch (e) {
-      print('Error deleting driver: $e');
       return false;
     }
   }
@@ -200,7 +190,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
       
       return CompanyDriver.fromJson(data);
     } catch (e) {
-      print('Error getting driver: $e');
       return null;
     }
   }
@@ -246,7 +235,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
         'offline': offline,
       };
     } catch (e) {
-      print('Error getting driver stats: $e');
       return {
         'total': 0,
         'available': 0,
@@ -276,7 +264,6 @@ Future<List<CompanyDriver>> fetchOwnerDrivers(String ownerId) async {
 
       await _firestore.collection(_driversCollection).doc(driverId).update(updateData);
     } catch (e) {
-      print('Error updating driver performance: $e');
     }
   }
 }

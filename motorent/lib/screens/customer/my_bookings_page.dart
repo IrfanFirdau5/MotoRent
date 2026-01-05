@@ -62,7 +62,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         _currentUser = user;
       });
     } catch (e) {
-      print('Error loading user: $e');
     }
   }
 
@@ -79,11 +78,9 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      print('🔍 Loading bookings for user: ${widget.userId}');
       
       final bookings = await _bookingService.fetchUserBookings(widget.userId);
       
-      print('✅ Loaded ${bookings.length} bookings');
       
       for (var booking in bookings) {
         if (booking.bookingStatus.toLowerCase() == 'completed') {
@@ -93,9 +90,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               booking.bookingId,
             );
             _reviewStatus[booking.bookingId.toString()] = hasReview;
-            print('   Booking ${booking.bookingId}: hasReview = $hasReview');
           } catch (e) {
-            print('⚠️  Error checking review status for booking ${booking.bookingId}: $e');
             _reviewStatus[booking.bookingId.toString()] = false;
           }
         }
@@ -107,7 +102,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Error loading bookings: $e');
       setState(() {
         _errorMessage = 'Failed to load bookings: $e';
         _isLoading = false;
@@ -231,14 +225,12 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     }
 
     try {
-      print('🔍 Fetching vehicle for review: $vehicleId');
       final vehicle = await _vehicleService.fetchVehicleById(vehicleId);
       
       _vehicleCache[vehicleId] = vehicle;
       
       return vehicle;
     } catch (e) {
-      print('❌ Error fetching vehicle: $e');
       return null;
     }
   }
@@ -253,7 +245,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     );
 
     try {
-      print('📝 Preparing to write review for booking: ${booking.bookingId}');
       
       final vehicle = await _getVehicleForReview(booking.vehicleId);
       
@@ -270,7 +261,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         return;
       }
 
-      print('✅ Vehicle loaded: ${vehicle.fullName}');
       
       final result = await Navigator.push(
         context,
@@ -284,7 +274,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       );
 
       if (result == true) {
-        print('✅ Review submitted, reloading bookings...');
         _loadBookings();
         
         if (!mounted) return;
@@ -306,7 +295,6 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         );
       }
     } catch (e) {
-      print('❌ Error preparing review: $e');
       
       if (!mounted) return;
       Navigator.pop(context);

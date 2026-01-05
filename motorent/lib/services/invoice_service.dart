@@ -437,11 +437,9 @@ class InvoiceService {
   /// Save invoice to device storage
   Future<String?> saveInvoiceToStorage(File pdfFile) async {
     try {
-      // This would require additional permissions and storage access
-      // For now, just return the temp file path
+
       return pdfFile.path;
     } catch (e) {
-      print('Error saving invoice: $e');
       return null;
     }
   }

@@ -52,24 +52,8 @@ class FirebaseBookingService {
         };
       }
 
-      print('');
-      print('═══════════════════════════════════════');
-      print('📝 CREATING BOOKING');
-      print('═══════════════════════════════════════');
-      print('User: $userName ($userEmail)');
-      print('Vehicle: $vehicleName');
-      print('Dates: ${startDate.toString().split(' ')[0]} to ${endDate.toString().split(' ')[0]}');
-      print('Total: RM ${totalPrice.toStringAsFixed(2)}');
-      print('Need Driver: $needDriver');
-      print('');
-      print('📍 LOCATION DATA:');
-      print('   Pickup: $pickupLocation');
-      print('   Pickup Coords: ($pickupLatitude, $pickupLongitude)');
       if (needDriver) {
-        print('   Dropoff: $dropoffLocation');
-        print('   Dropoff Coords: ($dropoffLatitude, $dropoffLongitude)');
       }
-      print('═══════════════════════════════════════');
 
       // ✅ Create booking with all location data
       final bookingData = {
@@ -106,9 +90,6 @@ class FirebaseBookingService {
 
       final docRef = await _firestore.collection(_bookingsCollection).add(bookingData);
 
-      print('✅ Booking created with ID: ${docRef.id}');
-      print('   Status: payment_pending (awaiting payment)');
-      print('');
 
       // Create the Booking object to return
       final booking = Booking(
@@ -145,7 +126,6 @@ class FirebaseBookingService {
         'message': 'Booking created! Please proceed to payment.',
       };
     } catch (e) {
-      print('❌ Error creating booking: $e');
       return {
         'success': false,
         'message': 'Failed to create booking: $e',
@@ -166,12 +146,8 @@ class FirebaseBookingService {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Payment authorization recorded for booking: $bookingId');
-      print('   Payment Intent ID: $paymentIntentId');
-      print('   Status: pending (awaiting owner approval)');
       return true;
     } catch (e) {
-      print('❌ Error updating payment authorization: $e');
       return false;
     }
   }
@@ -179,11 +155,6 @@ class FirebaseBookingService {
   // ✅ Approve booking (by owner) - Captures the held payment
   Future<Map<String, dynamic>> approveBooking(String bookingId) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('✅ APPROVING BOOKING');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
       
       final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
       
@@ -199,30 +170,21 @@ class FirebaseBookingService {
       final paymentIntentId = bookingData['payment_intent_id'] as String?;
       final paymentStatus = bookingData['payment_status'] as String?;
 
-      print('Need Driver: $needDriver');
-      print('Payment Intent ID: $paymentIntentId');
-      print('Payment Status: $paymentStatus');
 
       // ✅ Capture the held payment
       if (paymentIntentId != null && paymentStatus == 'authorized') {
-        print('💰 Capturing held payment...');
         
         final captureResult = await _stripeService.capturePayment(paymentIntentId);
         
         if (captureResult == null) {
-          print('❌ Failed to capture payment');
           return {
             'success': false,
             'message': 'Failed to capture payment. Please try again.',
           };
         }
         
-        print('✅ Payment captured successfully!');
-        print('   Amount: ${captureResult['amount_received']} ${captureResult['currency']}');
       } else if (paymentIntentId == null) {
-        print('⚠️  No payment intent ID found - skipping capture');
       } else if (paymentStatus != 'authorized') {
-        print('⚠️  Payment status is $paymentStatus - skipping capture');
       }
 
       // Update booking status to confirmed
@@ -232,14 +194,10 @@ class FirebaseBookingService {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Booking approved and confirmed');
 
       if (needDriver) {
-        print('✅ Driver request is now visible to drivers');
       }
 
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'success': true,
@@ -248,7 +206,6 @@ class FirebaseBookingService {
             : 'Booking approved! Payment captured successfully.',
       };
     } catch (e) {
-      print('❌ Error approving booking: $e');
       return {
         'success': false,
         'message': 'Failed to approve booking: $e',
@@ -259,12 +216,6 @@ class FirebaseBookingService {
   // ✅ Reject booking (by owner) - Cancels the held payment
   Future<Map<String, dynamic>> rejectBooking(String bookingId, String reason) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚫 REJECTING BOOKING');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
-      print('Reason: $reason');
       
       final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
       
@@ -279,19 +230,14 @@ class FirebaseBookingService {
       final paymentIntentId = bookingData['payment_intent_id'] as String?;
       final paymentStatus = bookingData['payment_status'] as String?;
 
-      print('Payment Intent ID: $paymentIntentId');
-      print('Payment Status: $paymentStatus');
 
       // ✅ Cancel the held payment
       if (paymentIntentId != null && paymentStatus == 'authorized') {
-        print('💳 Cancelling payment authorization...');
         
         final cancelled = await _stripeService.cancelPaymentIntent(paymentIntentId);
         
         if (cancelled) {
-          print('✅ Payment authorization cancelled - funds released');
         } else {
-          print('⚠️  Failed to cancel payment - manual intervention may be required');
         }
       }
 
@@ -303,16 +249,12 @@ class FirebaseBookingService {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Booking rejected successfully');
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'success': true,
         'message': 'Booking rejected and payment authorization cancelled',
       };
     } catch (e) {
-      print('❌ Error rejecting booking: $e');
       return {
         'success': false,
         'message': 'Failed to reject booking: $e',
@@ -323,7 +265,6 @@ class FirebaseBookingService {
   // ✅ Fetch owner's bookings with location data
   Future<List<Booking>> fetchOwnerBookings(String ownerId, {String? status}) async {
     try {
-      print('🔍 Fetching bookings for owner: $ownerId');
       
       Query query = _firestore
           .collection(_bookingsCollection)
@@ -335,7 +276,6 @@ class FirebaseBookingService {
 
       final querySnapshot = await query.orderBy('created_at', descending: true).get();
 
-      print('✅ Found ${querySnapshot.docs.length} bookings');
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -355,7 +295,6 @@ class FirebaseBookingService {
         return Booking.fromJson(data);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching owner bookings: $e');
       throw Exception('Failed to load bookings: $e');
     }
   }
@@ -363,7 +302,6 @@ class FirebaseBookingService {
   // ✅ Fetch user's bookings with location data
   Future<List<Booking>> fetchUserBookings(String userId, {String? status}) async {
     try {
-      print('🔍 Fetching bookings for user: $userId');
       
       Query query = _firestore
           .collection(_bookingsCollection)
@@ -375,7 +313,6 @@ class FirebaseBookingService {
 
       final querySnapshot = await query.orderBy('created_at', descending: true).get();
 
-      print('✅ Found ${querySnapshot.docs.length} bookings');
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -395,7 +332,6 @@ class FirebaseBookingService {
         return Booking.fromJson(data);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching user bookings: $e');
       throw Exception('Failed to load bookings: $e');
     }
   }
@@ -427,7 +363,6 @@ class FirebaseBookingService {
       
       return true;
     } catch (e) {
-      print('❌ Error updating booking status: $e');
       return false;
     }
   }
@@ -435,11 +370,6 @@ class FirebaseBookingService {
   // ✅ Complete booking and record revenue
   Future<Map<String, dynamic>> completeBooking(String bookingId) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('✅ COMPLETING BOOKING');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
       
       // Get booking data
       final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
@@ -460,10 +390,8 @@ class FirebaseBookingService {
         'updated_at': FieldValue.serverTimestamp(),
       });
       
-      print('✅ Booking status updated to completed');
       
       // Record revenue in vehicle_revenue collection
-      print('💰 Recording vehicle revenue...');
       
       final revenueRecorded = await _revenueService.recordBookingRevenue(
         bookingId: bookingId,
@@ -478,13 +406,9 @@ class FirebaseBookingService {
       );
       
       if (revenueRecorded) {
-        print('✅ Revenue recorded successfully');
       } else {
-        print('⚠️  Revenue recording failed (booking still marked as complete)');
       }
       
-      print('═══════════════════════════════════════');
-      print('');
       
       return {
         'success': true,
@@ -493,8 +417,6 @@ class FirebaseBookingService {
       };
       
     } catch (e, stackTrace) {
-      print('❌ Error completing booking: $e');
-      print('Stack trace: $stackTrace');
       return {
         'success': false,
         'message': 'Failed to complete booking: $e',
@@ -505,12 +427,6 @@ class FirebaseBookingService {
   // ✅ Cancel booking (by customer)
   Future<bool> cancelBooking(String bookingId, String cancellationReason) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚫 CANCELLING BOOKING (CUSTOMER)');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
-      print('Reason: $cancellationReason');
       
       // Get booking to check payment status
       final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
@@ -522,9 +438,7 @@ class FirebaseBookingService {
         
         // If payment was authorized but not captured, cancel it
         if (paymentIntentId != null && paymentStatus == 'authorized') {
-          print('💳 Cancelling authorized payment...');
           await _stripeService.cancelPaymentIntent(paymentIntentId);
-          print('✅ Payment authorization cancelled');
         }
       }
       
@@ -535,13 +449,9 @@ class FirebaseBookingService {
         'updated_at': FieldValue.serverTimestamp(),
       });
       
-      print('✅ Booking cancelled successfully');
-      print('═══════════════════════════════════════');
-      print('');
       
       return true;
     } catch (e) {
-      print('❌ Error cancelling booking: $e');
       return false;
     }
   }
@@ -574,7 +484,6 @@ class FirebaseBookingService {
 
       return true; // No overlaps, available
     } catch (e) {
-      print('❌ Error checking availability: $e');
       return false;
     }
   }
@@ -602,7 +511,6 @@ class FirebaseBookingService {
       
       return Booking.fromJson(data);
     } catch (e) {
-      print('❌ Error getting booking: $e');
       return null;
     }
   }
@@ -675,7 +583,6 @@ class FirebaseBookingService {
         'active_bookings': confirmed,
       };
     } catch (e) {
-      print('❌ Error getting booking stats: $e');
       return {
         'total_bookings': 0,
         'pending': 0,
@@ -716,7 +623,6 @@ class FirebaseBookingService {
         return Booking.fromJson(data);
       }).toList();
     } catch (e) {
-      print('❌ Error getting recent bookings: $e');
       return [];
     }
   }
@@ -771,7 +677,6 @@ class FirebaseBookingService {
 
       return nearbyBookings;
     } catch (e) {
-      print('❌ Error getting bookings by location: $e');
       return [];
     }
   }

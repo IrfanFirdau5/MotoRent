@@ -292,7 +292,6 @@ class _SubscriptionPaymentPageState extends State<SubscriptionPaymentPage> {
     });
 
     try {
-      print('🔵 Starting subscription process...');
 
       // Step 1: Create payment intent
       final paymentResult = await _subscriptionService.createProSubscription(
@@ -309,7 +308,6 @@ class _SubscriptionPaymentPageState extends State<SubscriptionPaymentPage> {
       final paymentIntentId = paymentResult['payment_intent_id'] as String;
       final customerId = paymentResult['customer_id'] as String;
 
-      print('✅ Payment intent created');
 
       // Step 2: Present payment sheet
       await Stripe.instance.initPaymentSheet(
@@ -326,12 +324,10 @@ class _SubscriptionPaymentPageState extends State<SubscriptionPaymentPage> {
         ),
       );
 
-      print('✅ Payment sheet initialized');
 
       // Step 3: Show payment sheet
       await Stripe.instance.presentPaymentSheet();
 
-      print('✅ Payment completed');
 
       // Step 4: Activate subscription in Firebase
       final activationResult =
@@ -345,7 +341,6 @@ class _SubscriptionPaymentPageState extends State<SubscriptionPaymentPage> {
         throw Exception(activationResult['message']);
       }
 
-      print('✅ Subscription activated');
 
       if (!mounted) return;
 
@@ -383,13 +378,11 @@ class _SubscriptionPaymentPageState extends State<SubscriptionPaymentPage> {
         ),
       );
     } on StripeException catch (e) {
-      print('❌ Stripe error: ${e.error.message}');
       setState(() {
         _errorMessage = e.error.message ?? 'Payment failed';
         _isProcessing = false;
       });
     } catch (e) {
-      print('❌ Error: $e');
       setState(() {
         _errorMessage = 'Failed to process subscription: $e';
         _isProcessing = false;

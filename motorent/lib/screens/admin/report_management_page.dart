@@ -1,8 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/report.dart';
-import '../../services/admin_service.dart';
 import '../../services/firebase_report_service.dart';
 
 class ReportManagementPage extends StatefulWidget {
@@ -552,9 +553,9 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
           // Report List
           Expanded(
             child: _isLoading
-                ? Center(
+                ? const Center(
                     child: SpinKitFadingCircle(
-                      color: const Color(0xFF1E88E5),
+                      color: Color(0xFF1E88E5),
                       size: 50.0,
                     ),
                   )
@@ -653,6 +654,7 @@ class _ReportManagementPageState extends State<ReportManagementPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
+                      // ignore: deprecated_member_use
                       color: _getStatusColor(report.status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),

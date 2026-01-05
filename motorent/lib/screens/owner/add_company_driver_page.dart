@@ -80,17 +80,10 @@ Future<void> _submitDriverWithDebug() async {
         throw Exception('No user logged in');
       }
 
-      print('\n🔍 DEBUGGING DRIVER CREATION');
-      print('═══════════════════════════════════════');
       
       // Step 1: Check user authentication
-      print('✅ Current User:');
-      print('   UID: ${currentUser.uid}');
-      print('   Email: ${currentUser.email}');
-      print('');
 
       // Step 2: Check user document
-      print('📄 Checking user document...');
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -101,11 +94,6 @@ Future<void> _submitDriverWithDebug() async {
       }
 
       final userData = userDoc.data()!;
-      print('✅ User Data:');
-      print('   user_type: ${userData['user_type']}');
-      print('   approval_status: ${userData['approval_status']}');
-      print('   is_active: ${userData['is_active']}');
-      print('');
 
       // Step 3: Validate user can create drivers
       if (userData['user_type'] != 'owner') {
@@ -120,8 +108,6 @@ Future<void> _submitDriverWithDebug() async {
         throw Exception('Owner account not active');
       }
 
-      print('✅ All user validations passed');
-      print('');
 
       // Step 4: Prepare driver data
       final driverData = {
@@ -140,21 +126,13 @@ Future<void> _submitDriverWithDebug() async {
         'updated_at': FieldValue.serverTimestamp(),
       };
 
-      print('📝 Driver Data to be created:');
-      print('   owner_id: ${driverData['owner_id']}');
-      print('   name: ${driverData['name']}');
-      print('   email: ${driverData['email']}');
-      print('');
 
       // Step 5: Attempt to create driver
-      print('🚀 Attempting to create driver in Firestore...');
       
       final docRef = await FirebaseFirestore.instance
           .collection('company_drivers')
           .add(driverData);
 
-      print('✅ SUCCESS! Driver created with ID: ${docRef.id}');
-      print('═══════════════════════════════════════\n');
 
       setState(() {
         _isLoading = false;
@@ -171,12 +149,7 @@ Future<void> _submitDriverWithDebug() async {
 
       Navigator.pop(context, true);
 
-    } catch (e, stackTrace) {
-      print('\n❌ ERROR CREATING DRIVER:');
-      print('═══════════════════════════════════════');
-      print('Error: $e');
-      print('Stack trace: $stackTrace');
-      print('═══════════════════════════════════════\n');
+    } catch (e) {
 
       setState(() {
         _isLoading = false;

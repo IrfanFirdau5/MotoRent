@@ -26,7 +26,6 @@ class FirebaseDriverService {
       final data = doc.data()!;
       return data['is_available'] ?? false;
     } catch (e) {
-      print('Error fetching driver availability: $e');
       return false;
     }
   }
@@ -39,7 +38,6 @@ class FirebaseDriverService {
         'availability_updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating availability: $e');
       throw Exception('Failed to update availability: $e');
     }
   }
@@ -71,7 +69,6 @@ class FirebaseDriverService {
 
       return slots;
     } catch (e) {
-      print('Error fetching slots: $e');
       return {};
     }
   }
@@ -107,7 +104,6 @@ class FirebaseDriverService {
         'updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error adding slot: $e');
       throw Exception('Failed to add time slot: $e');
     }
   }
@@ -147,7 +143,6 @@ class FirebaseDriverService {
         'updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error removing slot: $e');
       throw Exception('Failed to remove time slot: $e');
     }
   }
@@ -157,7 +152,6 @@ class FirebaseDriverService {
   // Fetch pending ride requests for driver - WITH DEBUG LOGGING
   Future<List<RideRequest>> fetchPendingRequests(String driverId) async {
     try {
-      print('🔍 Fetching pending requests for driver: $driverId');
       
       final querySnapshot = await _firestore
           .collection(_bookingsCollection)
@@ -168,12 +162,10 @@ class FirebaseDriverService {
           .limit(10)
           .get();
 
-      print('✅ Found ${querySnapshot.docs.length} pending requests');
       
       final requests = querySnapshot.docs.map((doc) {
         final data = doc.data();
         
-        print('   ✓ Booking ID: ${doc.id}');
         
         return RideRequest(
           requestId: '',
@@ -191,7 +183,6 @@ class FirebaseDriverService {
       
       return requests;
     } catch (e) {
-      print('❌ Error fetching pending requests: $e');
       return [];
     }
   }
@@ -204,13 +195,8 @@ class FirebaseDriverService {
   // Respond to ride request (accept/reject)
   Future<void> respondToRequest(String bookingId, String driverId, bool accept) async {
     try {
-      print('🔵 Driver responding to request');
-      print('   Firestore Booking ID: $bookingId');
-      print('   Accept: $accept');
-      print('   Driver ID: $driverId');
       
       if (bookingId.isEmpty || bookingId == '0' || bookingId == 'null') {
-        print('❌ ERROR: Invalid booking ID: "$bookingId"');
         throw Exception('Invalid booking ID. This should be the Firestore document ID.');
       }
       
@@ -221,12 +207,10 @@ class FirebaseDriverService {
           'updated_at': FieldValue.serverTimestamp(),
         });
 
-        print('   ✅ Booking updated with driver ID');
 
         final bookingDoc = await _firestore.collection(_bookingsCollection).doc(bookingId).get();
         
         if (!bookingDoc.exists) {
-          print('   ❌ ERROR: Booking document not found after update!');
           throw Exception('Booking not found');
         }
         
@@ -253,8 +237,6 @@ class FirebaseDriverService {
 
         final jobRef = await _firestore.collection(_driverJobsCollection).add(jobData);
         
-        print('   ✅ Driver job created: ${jobRef.id}');
-        print('   Payment: RM ${jobData['payment']}');
         
       } else {
         await _firestore.collection(_bookingsCollection).doc(bookingId).update({
@@ -262,12 +244,8 @@ class FirebaseDriverService {
           'updated_at': FieldValue.serverTimestamp(),
         });
         
-        print('   ✅ Request rejected');
       }
     } catch (e) {
-      print('❌ Error responding to request: $e');
-      print('   Booking ID was: $bookingId');
-      print('   Driver ID was: $driverId');
       throw Exception('Failed to respond to request: $e');
     }
   }
@@ -314,7 +292,6 @@ class FirebaseDriverService {
         'total_earnings': totalEarnings,
       };
     } catch (e) {
-      print('Error fetching driver stats: $e');
       return {
         'completed_today': 0,
         'upcoming': 0,
@@ -339,9 +316,9 @@ class FirebaseDriverService {
         final data = doc.data();
         
         return DriverJob(
-          jobId: int.tryParse(doc.id) ?? 0,
-          driverId: int.tryParse(driverId) ?? 0,
-          bookingId: int.tryParse(data['booking_id']?.toString() ?? '0') ?? 0,
+          jobId: doc.id ?? '',
+          driverId: driverId ?? '',
+          bookingId: data['booking_id']?.toString() ?? '',
           customerName: data['customer_name'] ?? '',
           customerPhone: data['customer_phone'] ?? '',
           vehicleName: data['vehicle_name'] ?? '',
@@ -355,7 +332,6 @@ class FirebaseDriverService {
         );
       }).toList();
     } catch (e) {
-      print('Error fetching driver jobs: $e');
       return [];
     }
   }
@@ -363,11 +339,6 @@ class FirebaseDriverService {
   // ✅ UPDATED: Complete a job and automatically create earnings
   Future<bool> completeJob(String jobId) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚗 COMPLETING DRIVER JOB');
-      print('═══════════════════════════════════════');
-      print('Job ID: $jobId');
       
       // 1. Get the job details first
       final jobDoc = await _firestore
@@ -376,7 +347,6 @@ class FirebaseDriverService {
           .get();
       
       if (!jobDoc.exists) {
-        print('❌ Job not found');
         return false;
       }
       
@@ -389,11 +359,6 @@ class FirebaseDriverService {
       final dropoffLocation = jobData['dropoff_location'] as String? ?? '';
       final bookingId = jobData['booking_id'];
       
-      print('Driver ID: $driverId');
-      print('Payment: RM ${driverPayment.toStringAsFixed(2)}');
-      print('Vehicle: $vehicleName');
-      print('Customer: $customerName');
-      print('Booking ID: $bookingId');
       
       // 2. Update the job status to completed
       await _firestore.collection(_driverJobsCollection).doc(jobId).update({
@@ -402,7 +367,6 @@ class FirebaseDriverService {
         'updated_at': FieldValue.serverTimestamp(),
       });
       
-      print('✅ Job status updated to completed');
       
       // 3. Update the booking status if it exists
       if (bookingId != null) {
@@ -411,9 +375,7 @@ class FirebaseDriverService {
             'driver_job_status': 'completed',
             'updated_at': FieldValue.serverTimestamp(),
           });
-          print('✅ Booking updated');
         } catch (e) {
-          print('⚠️  Could not update booking: $e');
         }
       }
       
@@ -441,27 +403,12 @@ class FirebaseDriverService {
           'created_at': FieldValue.serverTimestamp(),
         });
         
-        print('✅ Earnings created: RM ${driverPayment.toStringAsFixed(2)}');
-        print('   Description: $description');
       } else {
-        print('⚠️  No payment amount - earnings not created');
       }
       
-      print('═══════════════════════════════════════');
-      print('✅ JOB COMPLETION SUCCESS!');
-      print('═══════════════════════════════════════');
-      print('');
       
       return true;
     } catch (e) {
-      print('');
-      print('═══════════════════════════════════════');
-      print('❌ ERROR COMPLETING JOB');
-      print('═══════════════════════════════════════');
-      print('Error: $e');
-      print('Stack trace: ${StackTrace.current}');
-      print('═══════════════════════════════════════');
-      print('');
       return false;
     }
   }
@@ -494,7 +441,6 @@ class FirebaseDriverService {
         );
       }).toList();
     } catch (e) {
-      print('Error fetching earnings: $e');
       return [];
     }
   }
@@ -551,7 +497,6 @@ class FirebaseDriverService {
       
       return doc.data();
     } catch (e) {
-      print('Error fetching driver profile: $e');
       return null;
     }
   }
@@ -571,7 +516,6 @@ class FirebaseDriverService {
         'updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating driver profile: $e');
       throw Exception('Failed to update profile: $e');
     }
   }

@@ -65,7 +65,6 @@ class FirebaseVehicleService {
         'message': 'Vehicle added successfully!',
       };
     } catch (e) {
-      print('Error adding vehicle: $e');
       return {
         'success': false,
         'message': 'Failed to add vehicle: $e',
@@ -75,7 +74,6 @@ class FirebaseVehicleService {
 
   Future<List<Vehicle>> fetchOwnerVehicles(String ownerId) async {
     try {
-      print('🔍 Fetching vehicles for owner: $ownerId');
       
       final querySnapshot = await _firestore
           .collection(_vehiclesCollection)
@@ -84,10 +82,8 @@ class FirebaseVehicleService {
           .orderBy('created_at', descending: true)
           .get();
 
-      print('✅ Found ${querySnapshot.docs.length} vehicles');
 
       if (querySnapshot.docs.isEmpty) {
-        print('ℹ️  No vehicles found for owner: $ownerId');
         return [];
       }
 
@@ -102,11 +98,9 @@ class FirebaseVehicleService {
         return Vehicle.fromJson(data);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching owner vehicles: $e');
       
       // If index error, return empty (don't crash)
       if (e.toString().contains('index')) {
-        print('⚠️  Index required - check console for link to create it');
         return [];
       }
       
@@ -135,7 +129,6 @@ class FirebaseVehicleService {
         return Vehicle.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching available vehicles: $e');
       throw Exception('Failed to load vehicles: $e');
     }
   }
@@ -156,7 +149,6 @@ class FirebaseVehicleService {
       
       return Vehicle.fromJson(data);
     } catch (e) {
-      print('Error fetching vehicle: $e');
       return null;
     }
   }
@@ -187,7 +179,6 @@ class FirebaseVehicleService {
       
       return true;
     } catch (e) {
-      print('Error updating vehicle: $e');
       return false;
     }
   }
@@ -202,7 +193,6 @@ class FirebaseVehicleService {
       
       return true;
     } catch (e) {
-      print('Error updating availability: $e');
       return false;
     }
   }
@@ -218,7 +208,6 @@ class FirebaseVehicleService {
       
       return true;
     } catch (e) {
-      print('Error deleting vehicle: $e');
       return false;
     }
   }
@@ -266,7 +255,6 @@ class FirebaseVehicleService {
 
       return vehicles;
     } catch (e) {
-      print('Error fetching filtered vehicles: $e');
       throw Exception('Failed to load vehicles: $e');
     }
   }
@@ -280,7 +268,6 @@ class FirebaseVehicleService {
         'updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating vehicle stats: $e');
     }
   }
 
@@ -326,7 +313,6 @@ class FirebaseVehicleService {
         'review_count': vehicle.reviewCount ?? 0,
       };
     } catch (e) {
-      print('Error getting vehicle statistics: $e');
       return {
         'total_bookings': 0,
         'total_revenue': 0.0,

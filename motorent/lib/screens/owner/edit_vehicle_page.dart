@@ -91,7 +91,6 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
           throw Exception('No user logged in');
         }
 
-        print('📝 Updating vehicle: ${widget.vehicle.vehicleId}');
 
         // Prepare update data
         final updateData = {
@@ -106,7 +105,6 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
           'updated_at': FieldValue.serverTimestamp(),
         };
 
-        print('   Update data: $updateData');
 
         // Update in Firestore
         await FirebaseFirestore.instance
@@ -114,7 +112,6 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
             .doc(widget.vehicle.vehicleId.toString())
             .update(updateData);
 
-        print('✅ Vehicle updated successfully!');
 
         setState(() {
           _isLoading = false;
@@ -133,8 +130,6 @@ class _EditVehiclePageState extends State<EditVehiclePage> {
         Navigator.pop(context, true); // Return true to indicate success
 
       } catch (e, stackTrace) {
-        print('❌ Error updating vehicle: $e');
-        print('   Stack trace: $stackTrace');
 
         setState(() {
           _isLoading = false;

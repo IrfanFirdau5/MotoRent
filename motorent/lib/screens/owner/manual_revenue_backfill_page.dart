@@ -1,6 +1,8 @@
 // FILE: motorent/lib/screens/owner/manual_revenue_backfill_page.dart
 // ✅ COMPLETE MANUAL BACKFILL INTERFACE
 
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -51,7 +53,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) throw Exception('User not logged in');
 
-      print('🔍 Loading booking statistics...');
 
       // Get all completed bookings
       final completedSnapshot = await FirebaseFirestore.instance
@@ -60,7 +61,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
           .where('booking_status', isEqualTo: 'completed')
           .get();
 
-      print('📦 Total completed bookings: ${completedSnapshot.docs.length}');
 
       // Count recorded vs unrecorded
       int recorded = 0;
@@ -96,8 +96,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
         }
       }
 
-      print('✅ Recorded: $recorded');
-      print('⚠️  Unrecorded: $unrecorded');
 
       setState(() {
         _totalCompletedBookings = completedSnapshot.docs.length;
@@ -108,7 +106,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       });
 
     } catch (e, stackTrace) {
-      print('❌ Error loading stats: $e\n$stackTrace');
       
       setState(() {
         _isLoading = false;
@@ -160,20 +157,9 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) throw Exception('User not logged in');
 
-      print('');
-      print('═══════════════════════════════════════');
-      print('🔄 STARTING FULL BACKFILL');
-      print('═══════════════════════════════════════');
 
       final result = await _revenueService.backfillAllRevenue(currentUser.uid);
 
-      print('═══════════════════════════════════════');
-      print('✅ BACKFILL COMPLETE');
-      print('   Processed: ${result['processed']}');
-      print('   Successful: ${result['successful']}');
-      print('   Errors: ${result['errors']}');
-      print('═══════════════════════════════════════');
-      print('');
 
       setState(() {
         _processedCount = result['processed'] ?? 0;
@@ -205,7 +191,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       }
 
     } catch (e, stackTrace) {
-      print('❌ Error during backfill: $e\n$stackTrace');
       
       setState(() {
         _isBackfilling = false;
@@ -230,7 +215,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) throw Exception('User not logged in');
 
-      print('🔄 Backfilling single booking: $bookingId');
 
       // Get booking data
       final bookingDoc = await FirebaseFirestore.instance
@@ -286,7 +270,6 @@ class _ManualRevenueBackfillPageState extends State<ManualRevenueBackfillPage> {
       }
 
     } catch (e) {
-      print('❌ Error backfilling single booking: $e');
       
       setState(() {
         _isBackfilling = false;

@@ -270,9 +270,6 @@ class _DebugEverythingPageState extends State<DebugEverythingPage> {
       _output = buffer.toString();
       _isLoading = false;
     });
-
-    // Also print to console
-    print(buffer.toString());
   }
 
   @override

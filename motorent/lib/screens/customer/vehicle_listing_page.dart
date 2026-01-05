@@ -61,14 +61,11 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
         _currentUser = widget.user;
       });
     } else {
-      try {
         final user = await _authService.getCurrentUser();
         setState(() {
           _currentUser = user;
         });
-      } catch (e) {
-        print('Error loading user: $e');
-      }
+
     }
   }
 
@@ -79,11 +76,9 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
     });
 
     try {
-      print('🔍 Loading vehicles from Firebase...');
       
       final vehicles = await _vehicleService.fetchAvailableVehicles();
       
-      print('✅ Loaded ${vehicles.length} vehicles');
       
       // ✅ NEW: Load actual review counts for each vehicle
       await _loadReviewCounts(vehicles);
@@ -106,7 +101,6 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
       
       _applyFilters();
     } catch (e) {
-      print('❌ Error loading vehicles: $e');
       setState(() {
         _errorMessage = 'Failed to load vehicles: $e';
         _isLoading = false;
@@ -116,11 +110,10 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
 
   // ✅ NEW: Load actual review counts from Firestore
   Future<void> _loadReviewCounts(List<Vehicle> vehicles) async {
-    try {
+
       final reviewService = ReviewService();
       
       for (var vehicle in vehicles) {
-        try {
           // Fetch reviews for this vehicle
           final reviews = await reviewService.fetchVehicleReviews(
             vehicle.vehicleId.toString()
@@ -138,17 +131,8 @@ class _VehicleListingPageState extends State<VehicleListingPage> {
               'count': reviews.length,
             };
             
-            print('   Vehicle ${vehicle.vehicleId}: ${reviews.length} reviews, avg: ${avgRating.toStringAsFixed(1)}');
           }
-        } catch (e) {
-          print('   ⚠️  Error loading reviews for vehicle ${vehicle.vehicleId}: $e');
-        }
-      }
-      
-      print('✅ Loaded review counts for ${_vehicleReviewData.length} vehicles');
-    } catch (e) {
-      print('❌ Error loading review counts: $e');
-    }
+    } 
   }
 
   void _applyFilters() {

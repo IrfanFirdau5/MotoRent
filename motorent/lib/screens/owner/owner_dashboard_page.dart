@@ -1,6 +1,8 @@
 // FILE: motorent/lib/screens/owner/owner_dashboard_page.dart
 // ✅ COMPLETE VERSION WITH SUBSCRIPTION SYSTEM - FULL FILE
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'add_vehicle_page.dart';
@@ -84,10 +86,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         _isLoadingSubscription = false;
       });
       
-      print('📊 Subscription status: ${subscription?.plan} - ${subscription?.status}');
       
     } catch (e) {
-      print('❌ Error loading subscription: $e');
       setState(() {
         _isLoadingSubscription = false;
       });
@@ -457,11 +457,9 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     try {
       final currentUser = auth.FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
-        print('No user logged in for chart data');
         return;
       }
 
-      print('📊 Loading revenue chart data...');
 
       final now = DateTime.now();
       List<double> revenueData = [];
@@ -486,7 +484,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         revenueData.add(totalRevenue);
         monthLabels.add(DateFormat('MMM').format(targetDate));
 
-        print('   ${DateFormat('MMM yyyy').format(targetDate)}: RM ${totalRevenue.toStringAsFixed(2)}');
       }
 
       setState(() {
@@ -495,11 +492,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         _chartLoading = false;
       });
 
-      print('✅ Chart data loaded successfully');
 
     } catch (e, stackTrace) {
-      print('❌ Error loading chart data: $e');
-      print('Stack trace: $stackTrace');
       
       setState(() {
         _chartLoading = false;
@@ -512,7 +506,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       final currentUser = auth.FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      print('⭐ Loading average rating...');
 
       final vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('vehicles')
@@ -521,7 +514,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           .get();
 
       if (vehiclesSnapshot.docs.isEmpty) {
-        print('No vehicles found for rating calculation');
         setState(() {
           _averageRating = 0.0;
         });
@@ -550,10 +542,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         _averageRating = averageRating;
       });
 
-      print('✅ Average rating calculated: ${averageRating.toStringAsFixed(1)} from $totalReviewCount reviews');
 
     } catch (e) {
-      print('❌ Error loading average rating: $e');
       setState(() {
         _averageRating = 0.0;
       });

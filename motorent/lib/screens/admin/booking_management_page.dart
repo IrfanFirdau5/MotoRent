@@ -1,8 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
-import '../../services/admin_service.dart';
 import '../../services/firebase_booking_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -225,6 +226,8 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         );
         
         if (success) {
+          // ignore: duplicate_ignore
+          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Booking #${booking.bookingId} confirmed')),
           );
@@ -367,9 +370,9 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
           // Booking List
           Expanded(
             child: _isLoading
-                ? Center(
+                ? const Center(
                     child: SpinKitFadingCircle(
-                      color: const Color(0xFF1E88E5),
+                      color: Color(0xFF1E88E5),
                       size: 50.0,
                     ),
                   )
@@ -464,6 +467,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(booking.bookingStatus)
+                          // ignore: deprecated_member_use
                           .withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),

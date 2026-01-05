@@ -43,7 +43,6 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
         _userName = user?.name ?? 'Unknown User';
       });
     } catch (e) {
-      print('Error loading user name: $e');
       setState(() {
         _userName = 'Unknown User';
       });
@@ -92,11 +91,6 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
     });
 
     try {
-      print('📝 Submitting review:');
-      print('   Booking ID: ${widget.bookingId}');
-      print('   User ID: ${widget.userId}');
-      print('   Vehicle ID: ${widget.vehicle.vehicleId}');
-      print('   Rating: $_rating');
       
       // ✅ Submit review to Firebase
       final result = await _reviewService.submitReview(
@@ -115,7 +109,6 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
       if (!mounted) return;
 
       if (result['success']) {
-        print('✅ Review submitted successfully');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -126,7 +119,6 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
         
         Navigator.pop(context, true); // Return true to indicate success
       } else {
-        print('❌ Review submission failed: ${result['message']}');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -136,7 +128,6 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
         );
       }
     } catch (e) {
-      print('❌ Error submitting review: $e');
       
       setState(() {
         _isSubmitting = false;

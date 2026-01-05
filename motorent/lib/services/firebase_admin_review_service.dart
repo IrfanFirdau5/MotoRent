@@ -27,7 +27,6 @@ class FirebaseAdminReviewService {
         return Review.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching reviews: $e');
       throw Exception('Failed to load reviews: $e');
     }
   }
@@ -43,7 +42,6 @@ class FirebaseAdminReviewService {
       
       return true;
     } catch (e) {
-      print('Error deleting review: $e');
       return false;
     }
   }
@@ -76,7 +74,6 @@ class FirebaseAdminReviewService {
         'review_count': reviews.docs.length,
       });
     } catch (e) {
-      print('Error updating vehicle stats: $e');
     }
   }
 }

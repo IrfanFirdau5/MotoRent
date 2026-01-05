@@ -1,6 +1,8 @@
 // FILE: motorent/lib/screens/owner/owner_vehicle_overview_page.dart
 // COMPLETE REPLACEMENT - Vehicle statistics and reviews overview
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
@@ -61,7 +63,6 @@ class _OwnerVehicleOverviewPageState extends State<OwnerVehicleOverviewPage>
     });
 
     try {
-      print('🔍 Loading data for vehicle: ${widget.vehicle.vehicleId}');
       
       // Load reviews
       final reviews = await _reviewService.fetchVehicleReviews(
@@ -76,9 +77,7 @@ class _OwnerVehicleOverviewPageState extends State<OwnerVehicleOverviewPage>
         _isLoading = false;
       });
       
-      print('✅ Loaded ${reviews.length} reviews');
     } catch (e) {
-      print('❌ Error loading data: $e');
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
@@ -156,13 +155,7 @@ class _OwnerVehicleOverviewPageState extends State<OwnerVehicleOverviewPage>
         _monthlyBookings = monthlyBookings;
       });
 
-      print('📊 Statistics loaded:');
-      print('   Total Bookings: $total');
-      print('   Completed: $completed');
-      print('   Revenue: RM $revenue');
-      print('   Utilization: ${(utilizationRate * 100).toStringAsFixed(1)}%');
     } catch (e) {
-      print('❌ Error loading statistics: $e');
     }
   }
 
@@ -219,9 +212,9 @@ class _OwnerVehicleOverviewPageState extends State<OwnerVehicleOverviewPage>
         ),
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )
@@ -825,10 +818,10 @@ class _OwnerVehicleOverviewPageState extends State<OwnerVehicleOverviewPage>
               },
             ),
           ),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(
+        gridData: const FlGridData(
           show: true,
           drawVerticalLine: false,
           horizontalInterval: 1,

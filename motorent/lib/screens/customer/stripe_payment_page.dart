@@ -83,10 +83,7 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
         _isStripeReady = true;
       });
       
-      print('✅ Stripe ready for payment page');
-      print('   Mode: ${PaymentConfig.isTestMode ? 'TEST' : 'LIVE'}');
     } catch (e) {
-      print('❌ Stripe initialization check failed: $e');
       
       setState(() {
         _isStripeReady = false;
@@ -142,7 +139,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
     required User owner,
   }) async {
     try {
-      print('📄 Generating invoice...');
       
       final invoiceFile = await _invoiceService.generateInvoice(
         booking: widget.booking,
@@ -152,10 +148,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
         paymentIntentId: paymentIntentId,
       );
       
-      print('✅ Invoice generated: ${invoiceFile.path}');
-      print('📧 Invoice will be available to:');
-      print('   • Customer: ${customer.email}');
-      print('   • Owner: ${owner.email}');
       
       // ✅ In production, you would:
       // 1. Upload to Firebase Storage
@@ -167,7 +159,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
       
       return invoiceFile;
     } catch (e) {
-      print('⚠️  Invoice generation failed (non-critical): $e');
       return null;
     }
   }
@@ -198,14 +189,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
     });
 
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🚗 STARTING PAYMENT AUTHORIZATION PROCESS');
-      print('═══════════════════════════════════════');
-      print('Booking ID: ${widget.booking.bookingId}');
-      print('Amount: RM ${widget.booking.totalPrice.toStringAsFixed(2)}');
-      print('Mode: AUTHORIZATION (Funds will be HELD, not captured)');
-      print('═══════════════════════════════════════');
 
       final description = 'MotoRent Booking #${widget.booking.bookingId} - '
           '${widget.vehicle.fullName} - '
@@ -213,7 +196,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
           '${DateFormat('dd MMM yyyy').format(widget.booking.endDate)}';
 
       // Step 1: Create Payment Intent with MANUAL capture (hold funds)
-      print('📝 Step 1: Creating Payment Intent (AUTHORIZATION mode)...');
       final result = await _paymentService.createPaymentIntent(
         amount: widget.booking.totalPrice,
         description: description,
@@ -234,12 +216,8 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
       final clientSecret = result['client_secret'];
       final paymentIntentId = result['id'];
       
-      print('✅ Payment Intent created (will HOLD funds)!');
-      print('   Payment Intent ID: $paymentIntentId');
-      print('   Client Secret: ${clientSecret.substring(0, 20)}...');
 
       // Step 2: Confirm Payment with Stripe (authorize/hold the card)
-      print('💳 Step 2: Authorizing payment (holding funds on card)...');
       
       final paymentIntent = await Stripe.instance.confirmPayment(
         paymentIntentClientSecret: clientSecret,
@@ -248,19 +226,14 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
         ),
       );
 
-      print('✅ Payment authorized! Funds are HELD (not captured yet)');
-      print('   Status: ${paymentIntent.status}');
 
       // Step 3: Update booking with payment authorization
-      print('💾 Step 3: Recording payment authorization in booking...');
       await _bookingService.updatePaymentAuthorization(
         bookingId: widget.booking.bookingId.toString(),
         paymentIntentId: paymentIntentId,
       );
-      print('✅ Booking updated with payment authorization!');
 
       // Step 4: Generate invoice and send to BOTH customer AND owner
-      print('📄 Step 4: Generating and sending invoice to customer and owner...');
       
       // Get current user (customer)
       final currentUser = await _authService.getCurrentUser();
@@ -296,21 +269,14 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
       );
       
       if (invoiceFile != null) {
-        print('✅ Invoice generated successfully!');
-        print('   Customer: ${currentUser.name} (${currentUser.email})');
-        print('   Owner: ${owner.name} (${owner.email})');
-        print('   File: ${invoiceFile.path}');
         
         // ✅ NEW: Upload invoice to Firebase Storage
-        print('📤 Uploading invoice to Firebase Storage...');
         final invoiceUrl = await _invoiceStorageService.uploadInvoice(
           invoiceFile: invoiceFile,
           bookingId: widget.booking.bookingId.toString(),
         );
         
         if (invoiceUrl != null) {
-          print('✅ Invoice uploaded to Firebase Storage!');
-          print('   URL: $invoiceUrl');
           
           // Save invoice metadata
           await _invoiceStorageService.saveInvoiceMetadata(
@@ -320,17 +286,9 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
             ownerId: owner.userId.toString(),
           );
           
-          print('✅ Invoice is now accessible to both customer and owner!');
         }
       }
 
-      print('═══════════════════════════════════════');
-      print('✅ PAYMENT AUTHORIZATION COMPLETED!');
-      print('   Status: AUTHORIZED (Funds held)');
-      print('   Next: Owner must approve to capture funds');
-      print('   Invoice: Sent to customer and owner');
-      print('═══════════════════════════════════════');
-      print('');
 
       setState(() {
         _isProcessing = false;
@@ -353,7 +311,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
         ),
       );
     } on StripeException catch (e) {
-      print('❌ Stripe Error: ${e.error.message}');
       
       setState(() {
         _isProcessing = false;
@@ -369,7 +326,6 @@ class _StripePaymentPageState extends State<StripePaymentPage> {
         ),
       );
     } catch (e) {
-      print('❌ Payment Error: $e');
       
       setState(() {
         _isProcessing = false;
@@ -833,23 +789,23 @@ extension BookingCopyWith on Booking {
     String? paymentIntentId,
   }) {
     return Booking(
-      bookingId: this.bookingId,
-      userId: this.userId,
-      vehicleId: this.vehicleId,
-      ownerId: this.ownerId,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      totalPrice: this.totalPrice,
+      bookingId: bookingId,
+      userId: userId,
+      vehicleId: vehicleId,
+      ownerId: ownerId,
+      startDate: startDate,
+      endDate: endDate,
+      totalPrice: totalPrice,
       bookingStatus: bookingStatus ?? this.bookingStatus,
-      createdAt: this.createdAt,
-      userName: this.userName,
-      vehicleName: this.vehicleName,
-      userPhone: this.userPhone,
-      needDriver: this.needDriver,
-      driverPrice: this.driverPrice,
-      driverId: this.driverId,
-      driverName: this.driverName,
-      paymentStatus: this.paymentStatus,
+      createdAt: createdAt,
+      userName: userName,
+      vehicleName: vehicleName,
+      userPhone: userPhone,
+      needDriver: needDriver,
+      driverPrice: driverPrice,
+      driverId: driverId,
+      driverName: driverName,
+      paymentStatus: paymentStatus,
       paymentIntentId: paymentIntentId ?? this.paymentIntentId,
     );
   }

@@ -344,16 +344,16 @@ class LocationUtils {
   // ✅ Get nearest major city (Malaysia)
   static String getNearestMajaysianCity(double latitude, double longitude) {
     final cities = {
-      'Kuala Lumpur': LatLng(3.1390, 101.6869),
-      'George Town': LatLng(5.4164, 100.3327),
-      'Johor Bahru': LatLng(1.4927, 103.7414),
-      'Ipoh': LatLng(4.5975, 101.0901),
-      'Kuching': LatLng(1.5535, 110.3593),
-      'Kota Kinabalu': LatLng(5.9804, 116.0735),
-      'Petaling Jaya': LatLng(3.1073, 101.6425),
-      'Shah Alam': LatLng(3.0738, 101.5183),
-      'Malacca City': LatLng(2.1896, 102.2501),
-      'Seremban': LatLng(2.7259, 101.9424),
+      'Kuala Lumpur': const LatLng(3.1390, 101.6869),
+      'George Town': const LatLng(5.4164, 100.3327),
+      'Johor Bahru': const LatLng(1.4927, 103.7414),
+      'Ipoh': const LatLng(4.5975, 101.0901),
+      'Kuching': const LatLng(1.5535, 110.3593),
+      'Kota Kinabalu': const LatLng(5.9804, 116.0735),
+      'Petaling Jaya': const LatLng(3.1073, 101.6425),
+      'Shah Alam': const LatLng(3.0738, 101.5183),
+      'Malacca City': const LatLng(2.1896, 102.2501),
+      'Seremban': const LatLng(2.7259, 101.9424),
     };
 
     String nearestCity = 'Unknown';

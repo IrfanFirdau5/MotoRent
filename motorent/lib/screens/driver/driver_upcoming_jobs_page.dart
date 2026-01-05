@@ -1,9 +1,13 @@
+// FILE: motorent/lib/screens/driver/driver_upcoming_jobs_page.dart
+// ✅ FIXED: Proper handling of job completion
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/user.dart';
 import '../../models/driver_job.dart';
 import '../../services/driver_service.dart';
+import '../../services/firebase_driver_service.dart';
 
 class DriverUpcomingJobsPage extends StatefulWidget {
   final User driver;
@@ -20,6 +24,7 @@ class DriverUpcomingJobsPage extends StatefulWidget {
 class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
     with SingleTickerProviderStateMixin {
   final DriverService _driverService = DriverService();
+  final FirebaseDriverService _firebaseDriverService = FirebaseDriverService();
   late TabController _tabController;
   
   List<DriverJob> _upcomingJobs = [];
@@ -47,7 +52,10 @@ class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
     });
 
     try {
-      final jobs = await _driverService.fetchDriverJobs(widget.driver.userId);
+      
+      // ✅ FIX: Use Firebase service directly
+      final jobs = await _firebaseDriverService.fetchDriverJobs(widget.driver.userIdString);
+      
       
       setState(() {
         _upcomingJobs = jobs.where((job) => 
@@ -62,6 +70,7 @@ class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
         _upcomingJobs.sort((a, b) => a.pickupTime.compareTo(b.pickupTime));
         _completedJobs.sort((a, b) => b.pickupTime.compareTo(a.pickupTime));
         
+        
         _isLoading = false;
       });
     } catch (e) {
@@ -72,12 +81,47 @@ class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
     }
   }
 
+  /// ✅ FIXED: Complete job with proper ID handling
   Future<void> _completeJob(DriverJob job) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Complete Job'),
-        content: const Text('Mark this job as completed?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Mark this job as completed?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Payment: RM ${job.payment.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'This will be added to your earnings',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -97,26 +141,79 @@ class _DriverUpcomingJobsPageState extends State<DriverUpcomingJobsPage>
 
     if (confirmed != true) return;
 
-    try {
-      await _driverService.completeJob(job.jobId);
-      
-      if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Job marked as completed!'),
-          backgroundColor: Colors.green,
+    // Show loading dialog
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Completing job...'),
+              ],
+            ),
+          ),
         ),
-      );
+      ),
+    );
+
+    try {
       
-      _loadJobs();
-    } catch (e) {
+      // ✅ FIX: Use jobId directly (it's already the Firestore doc ID)
+      final success = await _firebaseDriverService.completeJob(job.jobId);
+      
+      // Close loading dialog
       if (!mounted) return;
+      Navigator.pop(context);
+      
+      if (success) {
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Job marked as completed!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text('RM ${job.payment.toStringAsFixed(2)} added to earnings'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        
+        // Reload jobs
+        await _loadJobs();
+      } else {
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to complete job. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      
+      // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }

@@ -1,6 +1,8 @@
 // FILE: motorent/lib/screens/driver/driver_dashboard_page.dart
 // REPLACE THE ENTIRE FILE WITH THIS
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
@@ -61,7 +63,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading dashboard: $e');
       setState(() {
         _isLoading = false;
       });
@@ -107,10 +108,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   Future<void> _respondToRequest(RideRequest request, bool accept) async {
     try {
       // ✅ FIXED: bookingId is now already a String containing the Firestore doc ID
-      print('🟢 Calling respondToRequest with:');
-      print('   Booking ID (Firestore Doc ID): ${request.bookingId}');
-      print('   Driver ID: ${widget.driver.userIdString}');
-      print('   Accept: $accept');
       
       // ✅ VALIDATION: Make sure we have a valid Firestore document ID
       if (request.bookingId.isEmpty || request.bookingId == '0') {
@@ -140,7 +137,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       
       _loadDashboardData();
     } catch (e) {
-      print('❌ Error in _respondToRequest: $e');
       
       if (!mounted) return;
       
@@ -226,9 +222,9 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         ],
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color: Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )

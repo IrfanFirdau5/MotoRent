@@ -11,7 +11,6 @@ class FirebaseDriverPaymentService {
   /// Get driver's payment information (available balance, pending withdrawals, etc.)
   Future<Map<String, dynamic>> getDriverPaymentInfo(String driverId) async {
     try {
-      print('🔍 Fetching payment info for driver: $driverId');
       
       // Get all earnings for the driver (both paid and pending count as available)
       final earningsSnapshot = await _firestore
@@ -19,7 +18,6 @@ class FirebaseDriverPaymentService {
           .where('driver_id', isEqualTo: driverId)
           .get();
 
-      print('📊 Found ${earningsSnapshot.docs.length} earning records');
 
       double totalEarnings = 0.0;
       double pendingEarnings = 0.0;
@@ -29,7 +27,6 @@ class FirebaseDriverPaymentService {
         final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
         final status = data['status'] as String?;
         
-        print('  💰 Earning: RM $amount, Status: $status');
         
         // Count all earnings that aren't yet withdrawn
         totalEarnings += amount;
@@ -40,7 +37,6 @@ class FirebaseDriverPaymentService {
         }
       }
 
-      print('💵 Total Earnings: RM $totalEarnings');
 
       // Get all completed withdrawals
       final withdrawalsSnapshot = await _firestore
@@ -49,16 +45,13 @@ class FirebaseDriverPaymentService {
           .where('status', isEqualTo: 'completed')
           .get();
 
-      print('✅ Found ${withdrawalsSnapshot.docs.length} completed withdrawals');
 
       double totalWithdrawn = 0.0;
       for (var doc in withdrawalsSnapshot.docs) {
         final amount = (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
         totalWithdrawn += amount;
-        print('  💸 Withdrawn: RM $amount');
       }
 
-      print('💸 Total Withdrawn: RM $totalWithdrawn');
 
       // Get pending withdrawals
       final pendingSnapshot = await _firestore
@@ -67,31 +60,17 @@ class FirebaseDriverPaymentService {
           .where('status', whereIn: ['pending', 'processing'])
           .get();
 
-      print('⏳ Found ${pendingSnapshot.docs.length} pending withdrawals');
 
       double pendingWithdrawals = 0.0;
       for (var doc in pendingSnapshot.docs) {
         final amount = (doc.data()['amount'] as num?)?.toDouble() ?? 0.0;
         pendingWithdrawals += amount;
-        print('  ⏳ Pending: RM $amount');
       }
 
-      print('⏳ Total Pending Withdrawals: RM $pendingWithdrawals');
 
       // Available balance = total earnings - total withdrawn - pending withdrawals
       double availableBalance = totalEarnings - totalWithdrawn - pendingWithdrawals;
 
-      print('');
-      print('═══════════════════════════════════════');
-      print('💰 PAYMENT INFO SUMMARY');
-      print('═══════════════════════════════════════');
-      print('Total Earnings:        RM ${totalEarnings.toStringAsFixed(2)}');
-      print('Pending Earnings:      RM ${pendingEarnings.toStringAsFixed(2)}');
-      print('Total Withdrawn:       RM ${totalWithdrawn.toStringAsFixed(2)}');
-      print('Pending Withdrawals:   RM ${pendingWithdrawals.toStringAsFixed(2)}');
-      print('AVAILABLE BALANCE:     RM ${availableBalance.toStringAsFixed(2)}');
-      print('═══════════════════════════════════════');
-      print('');
 
       return {
         'total_earnings': totalEarnings,
@@ -101,8 +80,6 @@ class FirebaseDriverPaymentService {
         'available_balance': availableBalance,
       };
     } catch (e) {
-      print('❌ Error getting driver payment info: $e');
-      print('Stack trace: ${StackTrace.current}');
       return {
         'total_earnings': 0.0,
         'pending_earnings': 0.0,
@@ -164,10 +141,6 @@ class FirebaseDriverPaymentService {
           .collection(_withdrawalsCollection)
           .add(withdrawalData);
 
-      print('✅ Withdrawal request created: ${docRef.id}');
-      print('   Amount: RM ${amount.toStringAsFixed(2)}');
-      print('   Driver: $driverName');
-      print('   Status: pending');
 
       return {
         'success': true,
@@ -175,7 +148,6 @@ class FirebaseDriverPaymentService {
         'message': 'Withdrawal request submitted successfully',
       };
     } catch (e) {
-      print('❌ Error requesting withdrawal: $e');
       return {
         'success': false,
         'message': 'Failed to submit withdrawal request: $e',
@@ -207,7 +179,6 @@ class FirebaseDriverPaymentService {
         return data;
       }).toList();
     } catch (e) {
-      print('Error getting withdrawal history: $e');
       return [];
     }
   }
@@ -215,26 +186,17 @@ class FirebaseDriverPaymentService {
   /// Admin: Get all pending withdrawal requests
   Future<List<Map<String, dynamic>>> getPendingWithdrawals() async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🔍 FETCHING PENDING WITHDRAWALS');
-      print('═══════════════════════════════════════');
       
       final querySnapshot = await _firestore
           .collection(_withdrawalsCollection)
           .where('status', isEqualTo: 'pending')
           .get();
 
-      print('Found ${querySnapshot.docs.length} pending withdrawals');
 
       final withdrawals = querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['withdrawal_id'] = doc.id;
         
-        print('  ✓ Withdrawal ID: ${doc.id}');
-        print('    Driver: ${data['driver_name']}');
-        print('    Amount: RM ${data['amount']}');
-        print('    Status: ${data['status']}');
         
         if (data['requested_at'] is Timestamp) {
           data['created_at'] = (data['requested_at'] as Timestamp).toDate();
@@ -251,15 +213,9 @@ class FirebaseDriverPaymentService {
         return aDate.compareTo(bDate);
       });
 
-      print('═══════════════════════════════════════');
-      print('');
       
       return withdrawals;
     } catch (e) {
-      print('');
-      print('❌ Error getting pending withdrawals: $e');
-      print('Stack trace: ${StackTrace.current}');
-      print('');
       return [];
     }
   }
@@ -272,13 +228,6 @@ class FirebaseDriverPaymentService {
     required double amount,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('💰 PROCESSING WITHDRAWAL WITH STRIPE');
-      print('═══════════════════════════════════════');
-      print('Withdrawal ID: $withdrawalId');
-      print('Amount: RM ${amount.toStringAsFixed(2)}');
-      print('Driver Email: $driverEmail');
       
       // Note: In test mode, this will simulate the transfer
       // In live mode, this requires the driver to have a Stripe account
@@ -301,10 +250,6 @@ class FirebaseDriverPaymentService {
         'stripe_transfer_id': null, // Would be set if using real Stripe transfers
       });
 
-      print('✅ Withdrawal approved (test mode)');
-      print('   Reference: $transferReference');
-      print('═══════════════════════════════════════');
-      print('');
       
       return {
         'success': true,
@@ -312,7 +257,6 @@ class FirebaseDriverPaymentService {
         'message': 'Withdrawal processed successfully',
       };
     } catch (e) {
-      print('❌ Error processing withdrawal: $e');
       return {
         'success': false,
         'message': 'Failed to process withdrawal: $e',
@@ -337,10 +281,8 @@ class FirebaseDriverPaymentService {
         'stripe_transfer_id': stripeTransferId,
       });
 
-      print('✅ Withdrawal approved: $withdrawalId');
       return true;
     } catch (e) {
-      print('❌ Error approving withdrawal: $e');
       return false;
     }
   }
@@ -359,10 +301,8 @@ class FirebaseDriverPaymentService {
         'rejection_reason': reason,
       });
 
-      print('✅ Withdrawal rejected: $withdrawalId');
       return true;
     } catch (e) {
-      print('❌ Error rejecting withdrawal: $e');
       return false;
     }
   }
@@ -415,7 +355,6 @@ class FirebaseDriverPaymentService {
         'total_completed': totalCompleted,
       };
     } catch (e) {
-      print('Error getting withdrawal statistics: $e');
       return {
         'total_requests': 0,
         'pending': 0,
@@ -467,10 +406,8 @@ class FirebaseDriverPaymentService {
         'paid_at': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Earning record created for driver $driverId: RM ${amount.toStringAsFixed(2)}');
       return true;
     } catch (e) {
-      print('❌ Error creating earning record: $e');
       return false;
     }
   }
@@ -478,13 +415,6 @@ class FirebaseDriverPaymentService {
   /// 🧪 TEMPORARY: Create test earnings data for a driver
   Future<void> createTestEarningsForDriver(String driverId, String driverName) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🧪 CREATING TEST EARNINGS');
-      print('═══════════════════════════════════════');
-      print('Driver ID: $driverId');
-      print('Driver Name: $driverName');
-      print('');
       
       // Create 11 test earnings (matching what you see in the UI)
       final now = DateTime.now();
@@ -560,16 +490,9 @@ class FirebaseDriverPaymentService {
           'created_at': FieldValue.serverTimestamp(),
         });
         
-        print('  ✅ Created: ${earning['description']} - RM ${earning['amount']}');
       }
 
-      print('');
-      print('✅ Successfully created ${testEarnings.length} test earnings!');
-      print('   Total: RM ${testEarnings.fold(0.0, (sum, e) => sum + (e['amount'] as double)).toStringAsFixed(2)}');
-      print('═══════════════════════════════════════');
-      print('');
     } catch (e) {
-      print('❌ Error creating test earnings: $e');
       throw e;
     }
   }

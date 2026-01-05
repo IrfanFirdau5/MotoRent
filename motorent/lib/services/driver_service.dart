@@ -197,9 +197,9 @@ class DriverService {
     await Future.delayed(const Duration(seconds: 1));
     return [
       DriverJob(
-        jobId: 1,
-        driverId: int.tryParse(driverId.toString()) ?? 0,
-        bookingId: 101,
+        jobId: '1',
+        driverId: driverId ?? '0',
+        bookingId: '101',
         customerName: 'Ahmad bin Abdullah',
         customerPhone: '+60123456789',
         vehicleName: 'Toyota Vios',
@@ -212,9 +212,9 @@ class DriverService {
         createdAt: DateTime.now(),
       ),
       DriverJob(
-        jobId: 2,
-        driverId: int.tryParse(driverId.toString()) ?? 0,
-        bookingId: 102,
+        jobId: '2',
+        driverId: driverId ?? '0',
+        bookingId: '102',
         customerName: 'Sarah Lim',
         customerPhone: '+60198765432',
         vehicleName: 'Honda Civic',

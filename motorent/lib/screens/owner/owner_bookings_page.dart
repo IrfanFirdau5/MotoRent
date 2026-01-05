@@ -60,17 +60,14 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         throw Exception('User not logged in');
       }
 
-      print('🔍 Loading bookings for owner: ${currentUser.uid}');
       
       final querySnapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('owner_id', isEqualTo: currentUser.uid)
           .get();
 
-      print('📦 Query returned: ${querySnapshot.docs.length} bookings');
 
       if (querySnapshot.docs.isEmpty) {
-        print('ℹ️  No bookings found for owner: ${currentUser.uid}');
         setState(() {
           _allBookings = [];
           _isLoading = false;
@@ -101,7 +98,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         return Booking.fromJson(data);
       }).toList();
 
-      print('✅ Loaded ${bookings.length} bookings');
 
       setState(() {
         _allBookings = bookings;
@@ -109,8 +105,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
         _isLoading = false;
       });
     } catch (e, stackTrace) {
-      print('❌ Error loading bookings: $e');
-      print('Stack trace: $stackTrace');
       
       setState(() {
         _errorMessage = 'Failed to load bookings: $e';
@@ -136,10 +130,6 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage>
     _confirmedBookings.sort((a, b) => a.startDate.compareTo(b.startDate));
     _completedBookings.sort((a, b) => b.endDate.compareTo(a.endDate));
 
-    print('📊 Categorized bookings:');
-    print('   Pending: ${_pendingBookings.length}');
-    print('   Confirmed: ${_confirmedBookings.length}');
-    print('   Completed: ${_completedBookings.length}');
   }
 
   Future<void> _approveBooking(Booking booking) async {

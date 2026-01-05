@@ -39,7 +39,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   @override
   void initState() {
     super.initState();
-    _selectedLocation = widget.initialLocation ?? LatLng(3.1390, 101.6869); // KL
+    _selectedLocation = widget.initialLocation ?? const LatLng(3.1390, 101.6869); // KL
     _selectedAddress = widget.initialAddress ?? '';
     _searchController.text = _selectedAddress;
     
@@ -90,7 +90,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       LocationPermission permission = await Geolocator.checkPermission();
       
       if (permission == LocationPermission.denied) {
-        print('📍 Location permission denied - requesting...');
         permission = await Geolocator.requestPermission();
         
         if (permission == LocationPermission.denied) {
@@ -133,7 +132,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         return;
       }
 
-      print('📍 Getting current position...');
       
       // Get position with timeout
       final position = await Geolocator.getCurrentPosition(
@@ -141,7 +139,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         timeLimit: const Duration(seconds: 10),
       );
 
-      print('✅ Got location: ${position.latitude}, ${position.longitude}');
 
       final location = LatLng(position.latitude, position.longitude);
       
@@ -169,7 +166,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         );
       }
     } catch (e) {
-      print('❌ Error getting location: $e');
       setState(() {
         _isLoading = false;
       });
@@ -221,7 +217,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         });
       }
     } catch (e) {
-      print('Error getting address: $e');
     }
   }
 
@@ -256,7 +251,6 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         }
       }
     } catch (e) {
-      print('Error searching location: $e');
       setState(() {
         _isSearching = false;
       });
@@ -468,15 +462,15 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
+                        const Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.location_on,
                               color: Color(0xFF1E88E5),
                               size: 20,
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
+                            SizedBox(width: 8),
+                            Text(
                               'Selected Location',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,

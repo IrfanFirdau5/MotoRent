@@ -15,8 +15,6 @@ class InvoiceStorageService {
     required String bookingId,
   }) async {
     try {
-      print('📤 Uploading invoice to Firebase Storage...');
-      print('   Booking ID: $bookingId');
       
       // Create a reference to the storage location
       final fileName = 'invoice_$bookingId.pdf';
@@ -28,12 +26,9 @@ class InvoiceStorageService {
       // Get the download URL
       final downloadUrl = await uploadTask.ref.getDownloadURL();
       
-      print('✅ Invoice uploaded successfully!');
-      print('   URL: $downloadUrl');
       
       return downloadUrl;
     } catch (e) {
-      print('❌ Error uploading invoice: $e');
       return null;
     }
   }
@@ -46,7 +41,6 @@ class InvoiceStorageService {
     required String ownerId,
   }) async {
     try {
-      print('💾 Saving invoice metadata to Firestore...');
       
       await _firestore.collection('invoices').doc(bookingId).set({
         'booking_id': bookingId,
@@ -62,10 +56,8 @@ class InvoiceStorageService {
         'updated_at': FieldValue.serverTimestamp(),
       });
       
-      print('✅ Invoice metadata saved successfully!');
       return true;
     } catch (e) {
-      print('❌ Error saving invoice metadata: $e');
       return false;
     }
   }
@@ -81,7 +73,6 @@ class InvoiceStorageService {
       
       return null;
     } catch (e) {
-      print('❌ Error getting invoice URL: $e');
       return null;
     }
   }
@@ -89,7 +80,6 @@ class InvoiceStorageService {
   /// Download invoice from Firebase Storage
   Future<File?> downloadInvoice(String invoiceUrl, String bookingId) async {
     try {
-      print('📥 Downloading invoice...');
       
       // Create a temporary file
       final tempDir = Directory.systemTemp;
@@ -99,10 +89,8 @@ class InvoiceStorageService {
       final ref = _storage.refFromURL(invoiceUrl);
       await ref.writeToFile(tempFile);
       
-      print('✅ Invoice downloaded successfully!');
       return tempFile;
     } catch (e) {
-      print('❌ Error downloading invoice: $e');
       return null;
     }
   }
@@ -113,7 +101,6 @@ class InvoiceStorageService {
       final doc = await _firestore.collection('invoices').doc(bookingId).get();
       return doc.exists;
     } catch (e) {
-      print('❌ Error checking invoice existence: $e');
       return false;
     }
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../services/firebase_admin_service.dart';
-import '../../services/firebase_vehicle_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminApprovalPage extends StatefulWidget {
@@ -19,7 +18,6 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
   String _errorMessage = '';
 
   final FirebaseAdminService _adminService = FirebaseAdminService();
-  final FirebaseVehicleService _vehicleService = FirebaseVehicleService();
 
   List<Map<String, dynamic>> _pendingDrivers = [];
   List<Map<String, dynamic>> _pendingVehicles = [];
@@ -431,7 +429,7 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
                         height: 120,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF1E88E5).withOpacity(0.1),
+                          color: const Color(0xFF1E88E5).withValues(),
                           border: Border.all(
                             color: const Color(0xFF1E88E5),
                             width: 3,
@@ -786,9 +784,9 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
         ),
       ),
       body: _isLoading
-          ? Center(
+          ? const Center(
               child: SpinKitFadingCircle(
-                color: const Color(0xFF1E88E5),
+                color:  Color(0xFF1E88E5),
                 size: 50.0,
               ),
             )
@@ -935,7 +933,7 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: const Color(0xFF1E88E5).withOpacity(0.1),
+                    backgroundColor: const Color(0xFF1E88E5).withValues(),
                     child: Text(
                       driver['name'][0].toUpperCase(),
                       style: const TextStyle(
@@ -985,7 +983,7 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -1144,7 +1142,7 @@ class _AdminApprovalPageState extends State<AdminApprovalPage>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(

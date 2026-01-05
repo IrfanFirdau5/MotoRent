@@ -8,7 +8,6 @@ class PaymentConfig {
   static String get stripePublishableKey {
     final key = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
     if (key.isEmpty) {
-      print('⚠️  WARNING: STRIPE_PUBLISHABLE_KEY not found in .env');
     }
     return key;
   }
@@ -18,7 +17,6 @@ class PaymentConfig {
   static String get stripeSecretKey {
     final key = dotenv.env['STRIPE_SECRET_KEY'] ?? '';
     if (key.isEmpty) {
-      print('⚠️  WARNING: STRIPE_SECRET_KEY not found in .env');
     }
     return key;
   }
@@ -36,17 +34,14 @@ class PaymentConfig {
   // Validate keys format
   static bool validateKeys() {
     if (!isConfigured) {
-      print('❌ Stripe keys are not configured!');
       return false;
     }
 
     if (!stripePublishableKey.startsWith('pk_')) {
-      print('❌ Invalid Stripe publishable key format!');
       return false;
     }
 
     if (!stripeSecretKey.startsWith('sk_')) {
-      print('❌ Invalid Stripe secret key format!');
       return false;
     }
 
@@ -55,26 +50,13 @@ class PaymentConfig {
     final secretKeyIsTest = stripeSecretKey.startsWith('sk_test_');
 
     if (pubKeyIsTest != secretKeyIsTest) {
-      print('⚠️  WARNING: Publishable and Secret keys are from different modes!');
       return false;
     }
 
-    print('✅ Stripe keys validated successfully (${isTestMode ? 'TEST' : 'LIVE'} mode)');
     return true;
   }
 
   // Print configuration status (for debugging)
   static void printStatus() {
-    print('');
-    print('═══════════════════════════════════════');
-    print('🔐 STRIPE CONFIGURATION STATUS');
-    print('═══════════════════════════════════════');
-    print('Configured: ${isConfigured ? '✅' : '❌'}');
-    print('Mode: ${isTestMode ? '🧪 TEST' : '🚀 LIVE'}');
-    print('Publishable Key: ${stripePublishableKey.isNotEmpty ? '${stripePublishableKey.substring(0, 15)}...' : 'NOT SET'}');
-    print('Secret Key: ${stripeSecretKey.isNotEmpty ? '${stripeSecretKey.substring(0, 12)}...' : 'NOT SET'}');
-    print('Valid: ${validateKeys() ? '✅' : '❌'}');
-    print('═══════════════════════════════════════');
-    print('');
   }
 }

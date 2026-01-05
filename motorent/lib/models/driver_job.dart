@@ -1,7 +1,10 @@
+// FILE: motorent/lib/models/driver_job.dart
+// ✅ FIXED: Changed all IDs to String for Firebase compatibility
+import 'package:cloud_firestore/cloud_firestore.dart';
 class DriverJob {
-  final int jobId;
-  final int driverId;
-  final int bookingId;
+  final String jobId; // ✅ Changed from int to String
+  final String driverId; // ✅ Changed from int to String
+  final String bookingId; // ✅ Changed from int to String
   final String customerName;
   final String customerPhone;
   final String vehicleName;
@@ -31,22 +34,26 @@ class DriverJob {
 
   factory DriverJob.fromJson(Map<String, dynamic> json) {
     return DriverJob(
-      jobId: json['job_id'] ?? 0,
-      driverId: json['driver_id'] ?? 0,
-      bookingId: json['booking_id'] ?? 0,
+      jobId: json['job_id']?.toString() ?? '',
+      driverId: json['driver_id']?.toString() ?? '',
+      bookingId: json['booking_id']?.toString() ?? '',
       customerName: json['customer_name'] ?? '',
       customerPhone: json['customer_phone'] ?? '',
       vehicleName: json['vehicle_name'] ?? '',
       pickupLocation: json['pickup_location'] ?? '',
       dropoffLocation: json['dropoff_location'] ?? '',
       pickupTime: json['pickup_time'] != null
-          ? DateTime.parse(json['pickup_time'])
+          ? (json['pickup_time'] is String 
+              ? DateTime.parse(json['pickup_time'])
+              : (json['pickup_time'] as Timestamp).toDate())
           : DateTime.now(),
       duration: json['duration'] ?? 1,
       payment: (json['payment'] ?? 0).toDouble(),
       status: json['status'] ?? 'scheduled',
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? (json['created_at'] is String
+              ? DateTime.parse(json['created_at'])
+              : (json['created_at'] as Timestamp).toDate())
           : DateTime.now(),
     );
   }

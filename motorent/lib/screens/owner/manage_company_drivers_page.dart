@@ -42,7 +42,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
         throw Exception('User not logged in');
       }
 
-      print('🔍 Loading company drivers for owner: ${currentUser.uid}');
 
       // SIMPLIFIED QUERY - Just owner_id, no ordering
       final querySnapshot = await FirebaseFirestore.instance
@@ -50,10 +49,8 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
           .where('owner_id', isEqualTo: currentUser.uid)
           .get();
 
-      print('📦 Query returned: ${querySnapshot.docs.length} documents');
 
       if (querySnapshot.docs.isEmpty) {
-        print('ℹ️  No company drivers found');
         setState(() {
           _drivers = [];
           _isLoading = false;
@@ -89,15 +86,12 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
       // Sort in code instead of query
       drivers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      print('✅ Loaded ${drivers.length} company drivers');
       
       setState(() {
         _drivers = drivers;
         _isLoading = false;
       });
     } catch (e, stackTrace) {
-      print('❌ Error loading company drivers: $e');
-      print('Stack trace: $stackTrace');
       
       setState(() {
         _errorMessage = 'Failed to load drivers: $e';
@@ -119,7 +113,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
   try {
     final newStatus = !driver.isActive;
     
-    print('🔄 Toggling driver active status to: $newStatus');
 
     await FirebaseFirestore.instance
         .collection('company_drivers')
@@ -130,7 +123,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
       'updated_at': FieldValue.serverTimestamp(),
     });
 
-    print('✅ Driver status updated successfully');
 
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog
@@ -147,7 +139,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
     _loadDrivers(); // Reload the list
 
   } catch (e) {
-    print('❌ Error updating driver status: $e');
 
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog
@@ -201,7 +192,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
   );
 
   try {
-    print('🗑️ Deleting driver: ${driver.driverId}');
 
     // Hard delete for drivers
     await FirebaseFirestore.instance
@@ -209,7 +199,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
         .doc(driver.driverId)
         .delete();
 
-    print('✅ Driver deleted successfully');
 
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog
@@ -224,7 +213,6 @@ class _ManageCompanyDriversPageState extends State<ManageCompanyDriversPage> {
     _loadDrivers(); // Reload the list
 
   } catch (e) {
-    print('❌ Error deleting driver: $e');
 
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog

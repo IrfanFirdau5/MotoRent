@@ -36,7 +36,6 @@ class FirebaseReportService {
         return Report.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching reports: $e');
       throw Exception('Failed to load reports: $e');
     }
   }
@@ -64,7 +63,6 @@ class FirebaseReportService {
       
       return Report.fromJson(data);
     } catch (e) {
-      print('Error getting report: $e');
       return null;
     }
   }
@@ -93,7 +91,6 @@ class FirebaseReportService {
       
       return true;
     } catch (e) {
-      print('Error updating report status: $e');
       return false;
     }
   }
@@ -104,7 +101,6 @@ class FirebaseReportService {
       await _firestore.collection(_reportsCollection).doc(reportId).delete();
       return true;
     } catch (e) {
-      print('Error deleting report: $e');
       return false;
     }
   }
@@ -119,7 +115,6 @@ class FirebaseReportService {
       
       return true;
     } catch (e) {
-      print('Error updating admin notes: $e');
       return false;
     }
   }
@@ -173,7 +168,6 @@ class FirebaseReportService {
         'resolution_rate': total > 0 ? (resolved / total * 100) : 0.0,
       };
     } catch (e) {
-      print('Error getting report stats: $e');
       return {
         'total': 0,
         'pending': 0,

@@ -21,14 +21,6 @@ class VehicleRevenueTrackingService {
     double? driverPrice,
   }) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('💰 RECORDING VEHICLE REVENUE');
-      print('═══════════════════════════════════════');
-      print('Booking ID: $bookingId');
-      print('Vehicle ID: $vehicleId');
-      print('Total Price: RM $totalPrice');
-      print('Driver Price: ${driverPrice ?? 0.0}');
       
       // Calculate vehicle revenue (exclude driver fee)
       double vehicleRevenue = totalPrice;
@@ -36,24 +28,20 @@ class VehicleRevenueTrackingService {
         vehicleRevenue = totalPrice - driverPrice;
       }
       
-      print('Vehicle Revenue: RM $vehicleRevenue');
       
       // Calculate rental duration
       int rentalDays = endDate.difference(startDate).inDays + 1;
-      print('Rental Duration: $rentalDays days');
       
       // Get the month and year of completion
       final month = completionDate.month;
       final year = completionDate.year;
       final monthKey = '${year}_${month.toString().padLeft(2, '0')}'; // e.g., "2024_12"
       
-      print('Month Key: $monthKey (${DateFormat('MMMM yyyy').format(completionDate)})');
       
       // Get or fetch vehicle data
       final vehicleDoc = await _firestore.collection('vehicles').doc(vehicleId).get();
       
       if (!vehicleDoc.exists) {
-        print('❌ Vehicle not found: $vehicleId');
         return false;
       }
       
@@ -64,9 +52,6 @@ class VehicleRevenueTrackingService {
       final monthlyPayment = (vehicleData['monthly_payment'] as num?)?.toDouble() ?? 0.0;
       final totalMonthlyPayment = monthlyMaintenance + monthlyPayment;
       
-      print('Vehicle: $vehicleName');
-      print('License Plate: $licensePlate');
-      print('Monthly Payment: RM $totalMonthlyPayment');
       
       // Check if revenue record exists for this vehicle and month
       final revenueDocId = '${vehicleId}_$monthKey';
@@ -75,7 +60,6 @@ class VehicleRevenueTrackingService {
       
       if (revenueDoc.exists) {
         // Update existing record
-        print('📝 Updating existing revenue record');
         
         final existingData = revenueDoc.data()!;
         final currentRevenue = (existingData['total_revenue'] as num?)?.toDouble() ?? 0.0;
@@ -102,14 +86,9 @@ class VehicleRevenueTrackingService {
           'updated_at': FieldValue.serverTimestamp(),
         });
         
-        print('✅ Revenue record updated');
-        print('   Total Revenue: RM $newRevenue');
-        print('   Total Bookings: $newBookings');
-        print('   Utilization: ${(utilizationRate * 100).toStringAsFixed(1)}%');
         
       } else {
         // Create new record
-        print('📝 Creating new revenue record');
         
         // Calculate metrics
         final daysInMonth = DateTime(year, month + 1, 0).day;
@@ -148,11 +127,6 @@ class VehicleRevenueTrackingService {
         
         await revenueDocRef.set(revenueData);
         
-        print('✅ Revenue record created');
-        print('   Revenue: RM $vehicleRevenue');
-        print('   Payment: RM $totalMonthlyPayment');
-        print('   Profit/Loss: RM ${vehicleRevenue - totalMonthlyPayment}');
-        print('   Utilization: ${(utilizationRate * 100).toStringAsFixed(1)}%');
       }
       
       // Also update the booking document with revenue tracking flag
@@ -161,14 +135,10 @@ class VehicleRevenueTrackingService {
         'revenue_recorded_at': FieldValue.serverTimestamp(),
       });
       
-      print('═══════════════════════════════════════');
-      print('');
       
       return true;
       
     } catch (e, stackTrace) {
-      print('❌ Error recording revenue: $e');
-      print('Stack trace: $stackTrace');
       return false;
     }
   }
@@ -193,7 +163,6 @@ class VehicleRevenueTrackingService {
       
       return null;
     } catch (e) {
-      print('❌ Error getting vehicle revenue: $e');
       return null;
     }
   }
@@ -223,7 +192,6 @@ class VehicleRevenueTrackingService {
       }).toList();
       
     } catch (e) {
-      print('❌ Error getting owner revenue: $e');
       return [];
     }
   }
@@ -237,7 +205,6 @@ class VehicleRevenueTrackingService {
     required int year,
   }) async {
     try {
-      print('🔄 Recalculating revenue for vehicle: $vehicleId');
       
       final startDate = DateTime(year, month, 1);
       final endDate = DateTime(year, month + 1, 0, 23, 59, 59);
@@ -252,14 +219,12 @@ class VehicleRevenueTrackingService {
           .get();
       
       if (bookingsSnapshot.docs.isEmpty) {
-        print('ℹ️  No completed bookings found for this month');
         return false;
       }
       
       // Get vehicle data
       final vehicleDoc = await _firestore.collection('vehicles').doc(vehicleId).get();
       if (!vehicleDoc.exists) {
-        print('❌ Vehicle not found');
         return false;
       }
       
@@ -329,15 +294,10 @@ class VehicleRevenueTrackingService {
         SetOptions(merge: true),
       );
       
-      print('✅ Revenue recalculated successfully');
-      print('   Total Revenue: RM $totalRevenue');
-      print('   Total Bookings: $totalBookings');
-      print('   Utilization: ${(utilizationRate * 100).toStringAsFixed(1)}%');
       
       return true;
       
     } catch (e) {
-      print('❌ Error recalculating revenue: $e');
       return false;
     }
   }
@@ -346,10 +306,6 @@ class VehicleRevenueTrackingService {
   /// Use this to populate the vehicle_revenue collection from existing bookings
   Future<Map<String, dynamic>> backfillAllRevenue(String ownerId) async {
     try {
-      print('');
-      print('═══════════════════════════════════════');
-      print('🔄 BACKFILLING REVENUE DATA');
-      print('═══════════════════════════════════════');
       
       // Get all completed bookings for this owner
       final bookingsSnapshot = await _firestore
@@ -358,7 +314,6 @@ class VehicleRevenueTrackingService {
           .where('booking_status', isEqualTo: 'completed')
           .get();
       
-      print('Found ${bookingsSnapshot.docs.length} completed bookings');
       
       int successCount = 0;
       int errorCount = 0;
@@ -368,7 +323,6 @@ class VehicleRevenueTrackingService {
         
         // Skip if already recorded
         if (bookingData['revenue_recorded'] == true) {
-          print('⏭️  Skipping already recorded booking: ${doc.id}');
           continue;
         }
         
@@ -396,17 +350,10 @@ class VehicleRevenueTrackingService {
           }
           
         } catch (e) {
-          print('❌ Error processing booking ${doc.id}: $e');
           errorCount++;
         }
       }
       
-      print('═══════════════════════════════════════');
-      print('✅ Backfill complete');
-      print('   Success: $successCount');
-      print('   Errors: $errorCount');
-      print('═══════════════════════════════════════');
-      print('');
       
       return {
         'success': true,
@@ -416,7 +363,6 @@ class VehicleRevenueTrackingService {
       };
       
     } catch (e) {
-      print('❌ Error in backfill: $e');
       return {
         'success': false,
         'error': e.toString(),

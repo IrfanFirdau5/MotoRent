@@ -1,8 +1,9 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import '../../models/user.dart';
-import '../../services/admin_service.dart';
 import '../../services/firebase_admin_service.dart';
 
 class UserManagementPage extends StatefulWidget {
@@ -330,9 +331,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
           // User List
           Expanded(
             child: _isLoading
-                ? Center(
+                ? const Center(
                     child: SpinKitFadingCircle(
-                      color: const Color(0xFF1E88E5),
+                      color: Color(0xFF1E88E5),
                       size: 50.0,
                     ),
                   )

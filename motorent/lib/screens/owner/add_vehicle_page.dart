@@ -64,8 +64,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         throw Exception('No user logged in');
       }
 
-      print('📝 Creating vehicle...');
-      print('   Owner UID: ${currentUser.uid}');
 
       // Get user data for owner name
       final userDoc = await FirebaseFirestore.instance
@@ -95,15 +93,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         'is_deleted': false,
       };
 
-      print('   Creating document in Firestore...');
 
       // Add to Firestore directly
       final docRef = await FirebaseFirestore.instance
           .collection('vehicles')
           .add(vehicleData);
 
-      print('✅ Vehicle created successfully!');
-      print('   Vehicle ID: ${docRef.id}');
 
       setState(() {
         _isLoading = false;
@@ -122,8 +117,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       Navigator.pop(context, true);
 
     } catch (e, stackTrace) {
-      print('❌ Error creating vehicle: $e');
-      print('   Stack trace: $stackTrace');
 
       setState(() {
         _isLoading = false;

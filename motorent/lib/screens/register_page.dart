@@ -160,16 +160,12 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
 Future<void> _handleRegister() async {
-  print('🔵 DEBUG: _handleRegister called');
   
   if (_formKey.currentState!.validate()) {
-    print('🔵 DEBUG: Form validation passed');
     
     // Additional validation for driver registration
     if (_selectedUserType == 'driver') {
-      print('🔵 DEBUG: Checking driver license image');
       if (_licenseImage == null) {
-        print('🔴 DEBUG: License image is null');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please upload your driving license photo'),
@@ -179,14 +175,11 @@ Future<void> _handleRegister() async {
         );
         return;
       }
-      print('🔵 DEBUG: License image OK');
     }
 
     // Additional validation for owner registration
     if (_selectedUserType == 'owner') {
-      print('🔵 DEBUG: Checking owner business document');
       if (_hasBusinessRegistration && _businessDocumentImage == null) {
-        print('🔴 DEBUG: Business document is null');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please upload your business registration document'),
@@ -196,20 +189,16 @@ Future<void> _handleRegister() async {
         );
         return;
       }
-      print('🔵 DEBUG: Business document OK');
     }
 
-    print('🔵 DEBUG: Setting loading to true');
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('🔵 DEBUG: Preparing additional data');
       Map<String, dynamic>? additionalData;
       
       if (_selectedUserType == 'driver') {
-        print('🔵 DEBUG: Creating driver additional data');
         additionalData = {
           'ic_number': _icNumberController.text.trim(),
           'license_number': _licenseNumberController.text.trim(),
@@ -217,9 +206,7 @@ Future<void> _handleRegister() async {
           'profile_image_selected': _profileImage != null,
           'approval_status': 'pending',
         };
-        print('🔵 DEBUG: Driver data: $additionalData');
       } else if (_selectedUserType == 'owner') {
-        print('🔵 DEBUG: Creating owner additional data');
         additionalData = {
           'business_name': _businessNameController.text.trim(),
           'owner_ic_number': _ownerIcNumberController.text.trim(),
@@ -231,12 +218,8 @@ Future<void> _handleRegister() async {
           additionalData['business_registration_number'] = _businessRegistrationController.text.trim();
           additionalData['business_document_selected'] = _businessDocumentImage != null;
         }
-        print('🔵 DEBUG: Owner data: $additionalData');
       }
 
-      print('🔵 DEBUG: About to call AuthService.register()');
-      print('🔵 DEBUG: Email: ${_emailController.text.trim()}');
-      print('🔵 DEBUG: User Type: $_selectedUserType');
       
       // Register user with Firebase
       final result = await _authService.register(
@@ -249,8 +232,6 @@ Future<void> _handleRegister() async {
         additionalData: additionalData,
       );
 
-      print('🔵 DEBUG: AuthService.register() returned');
-      print('🔵 DEBUG: Result: $result');
 
       setState(() {
         _isLoading = false;
@@ -259,7 +240,6 @@ Future<void> _handleRegister() async {
       if (!mounted) return;
 
       if (result['success']) {
-        print('✅ DEBUG: Registration successful!');
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -296,8 +276,6 @@ Future<void> _handleRegister() async {
           Navigator.pop(context);
         }
       } else {
-        print('🔴 DEBUG: Registration failed!');
-        print('🔴 DEBUG: Error message: ${result['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
@@ -307,9 +285,6 @@ Future<void> _handleRegister() async {
         );
       }
     } catch (e) {
-      print('🔴 DEBUG: Exception caught: $e');
-      print('🔴 DEBUG: Stack trace:');
-      print(StackTrace.current);
       
       setState(() {
         _isLoading = false;
@@ -326,7 +301,6 @@ Future<void> _handleRegister() async {
       );
     }
   } else {
-    print('🔴 DEBUG: Form validation FAILED');
   }
 }
 
@@ -990,7 +964,6 @@ Future<void> _handleRegister() async {
                   height: 55,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : () {
-                  print('🔵 BUTTON: Register button pressed!');
                   _handleRegister(); },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E88E5),

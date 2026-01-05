@@ -32,7 +32,6 @@ class FirebaseAdminService {
         return User.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching users: $e');
       throw Exception('Failed to load users: $e');
     }
   }
@@ -55,7 +54,6 @@ class FirebaseAdminService {
       
       return User.fromJson(data);
     } catch (e) {
-      print('Error getting user: $e');
       return null;
     }
   }
@@ -70,7 +68,6 @@ class FirebaseAdminService {
       
       return true;
     } catch (e) {
-      print('Error toggling user status: $e');
       return false;
     }
   }
@@ -87,7 +84,6 @@ class FirebaseAdminService {
       
       return true;
     } catch (e) {
-      print('Error deleting user: $e');
       return false;
     }
   }
@@ -112,7 +108,6 @@ class FirebaseAdminService {
       
       return true;
     } catch (e) {
-      print('Error updating user: $e');
       return false;
     }
   }
@@ -143,7 +138,6 @@ class FirebaseAdminService {
       
       return true;
     } catch (e) {
-      print('Error updating approval status: $e');
       return false;
     }
   }
@@ -170,7 +164,6 @@ class FirebaseAdminService {
         return User.fromJson(data);
       }).toList();
     } catch (e) {
-      print('Error fetching pending users: $e');
       return [];
     }
   }
@@ -235,7 +228,6 @@ class FirebaseAdminService {
         'booking_growth': 12.5, // Calculate from previous month comparison
       };
     } catch (e) {
-      print('Error getting dashboard stats: $e');
       return {
         'total_users': 0,
         'total_vehicles': 0,
@@ -535,7 +527,6 @@ class FirebaseAdminService {
         'top_owners': topOwners.take(5).toList(),
       };
     } catch (e) {
-      print('Error getting monthly report: $e');
       throw Exception('Failed to generate monthly report: $e');
     }
   }

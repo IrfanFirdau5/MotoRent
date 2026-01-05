@@ -111,7 +111,6 @@ class AuthService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
-      print('Starting registration for: $email');
       
       // Create user in Firebase Auth
       final firebase_auth.UserCredential userCredential = 
@@ -121,14 +120,12 @@ class AuthService {
       );
 
       if (userCredential.user == null) {
-        print('Error: User credential is null');
         return {
           'success': false,
           'message': 'Registration failed. Please try again.',
         };
       }
 
-      print('Firebase Auth account created: ${userCredential.user!.uid}');
 
       // Prepare user data for Firestore
       Map<String, dynamic> userData = {
@@ -149,8 +146,6 @@ class AuthService {
         userData.addAll(additionalData);
       }
 
-      print('Attempting to save to Firestore...');
-      print('User data: $userData');
 
       // Save user data to Firestore
       await _firestore
@@ -158,11 +153,9 @@ class AuthService {
           .doc(userCredential.user!.uid)
           .set(userData);
 
-      print('Successfully saved to Firestore!');
 
       // Update display name in Firebase Auth
       await userCredential.user!.updateDisplayName(name);
-      print('Display name updated');
 
       // Create User model
       userData['user_id'] = userCredential.user!.uid;
@@ -176,7 +169,6 @@ class AuthService {
             : 'Registration submitted! Awaiting approval.',
       };
     } on firebase_auth.FirebaseAuthException catch (e) {
-      print('FirebaseAuthException: ${e.code} - ${e.message}');
       String message;
       switch (e.code) {
         case 'weak-password':
@@ -196,13 +188,11 @@ class AuthService {
         'message': message,
       };
     } on FirebaseException catch (e) {
-      print('FirebaseException: ${e.code} - ${e.message}');
       return {
         'success': false,
         'message': 'Database error: ${e.message}',
       };
     } catch (e) {
-      print('General Exception: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -228,7 +218,6 @@ class AuthService {
       
       return User.fromJson(userData);
     } catch (e) {
-      print('Error getting current user: $e');
       return null;
     }
   }

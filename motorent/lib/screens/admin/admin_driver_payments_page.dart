@@ -1,6 +1,8 @@
 // FILE: motorent/lib/screens/admin/admin_driver_payments_page.dart
 // CREATE THIS NEW FILE
 
+// ignore_for_file: unused_field, unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -40,13 +42,10 @@ class _AdminDriverPaymentsPageState extends State<AdminDriverPaymentsPage> {
     });
 
     try {
-      print('🔵 Admin: Loading withdrawal data...');
       
       final pending = await _paymentService.getPendingWithdrawals();
       final stats = await _paymentService.getWithdrawalStatistics();
 
-      print('✅ Admin: Loaded ${pending.length} pending withdrawals');
-      print('📊 Admin: Stats - ${stats['pending']} pending, ${stats['completed']} completed');
 
       setState(() {
         _pendingWithdrawals = pending;
@@ -54,8 +53,6 @@ class _AdminDriverPaymentsPageState extends State<AdminDriverPaymentsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Admin: Error loading data: $e');
-      print('Stack trace: ${StackTrace.current}');
       
       setState(() {
         _isLoading = false;
@@ -187,6 +184,7 @@ class _AdminDriverPaymentsPageState extends State<AdminDriverPaymentsPage> {
     try {
       // Show loading
       showDialog(
+        // ignore: use_build_context_synchronously
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(
@@ -623,43 +621,24 @@ class _AdminDriverPaymentsPageState extends State<AdminDriverPaymentsPage> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh & Debug',
             onPressed: () async {
-              print('');
-              print('🔍 MANUAL DEBUG CHECK');
-              print('═══════════════════════════════════════');
               
-              try {
                 final snapshot = await FirebaseFirestore.instance
                     .collection('driver_withdrawals')
                     .get();
                 
-                print('Total withdrawal documents: ${snapshot.docs.length}');
                 
                 for (var doc in snapshot.docs) {
                   final data = doc.data();
-                  print('');
-                  print('Document ID: ${doc.id}');
-                  print('  Driver ID: ${data['driver_id']}');
-                  print('  Driver Name: ${data['driver_name']}');
-                  print('  Amount: ${data['amount']}');
-                  print('  Status: ${data['status']}');
                 }
                 
-                print('');
-                print('Pending filter test...');
                 
                 final pendingSnapshot = await FirebaseFirestore.instance
                     .collection('driver_withdrawals')
                     .where('status', isEqualTo: 'pending')
                     .get();
                 
-                print('Pending count: ${pendingSnapshot.docs.length}');
                 
-              } catch (e) {
-                print('❌ Error: $e');
-              }
               
-              print('═══════════════════════════════════════');
-              print('');
               
               _loadData();
             },
@@ -850,6 +829,7 @@ class _AdminDriverPaymentsPageState extends State<AdminDriverPaymentsPage> {
               Row(
                 children: [
                   CircleAvatar(
+                    // ignore: deprecated_member_use
                     backgroundColor: Colors.orange.withOpacity(0.1),
                     child: Text(
                       driverName[0].toUpperCase(),
