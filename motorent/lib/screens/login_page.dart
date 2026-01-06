@@ -178,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                     height: 150,
                     errorBuilder: (context, error, stackTrace) {
                       // Fallback to icon if logo not found
-                      return Icon(
+                      return const Icon(
                         Icons.directions_car,
                         size: 100,
                         color: const Color(0xFF1E88E5),
@@ -348,23 +348,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey[400])),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey[400])),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
                   
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -397,67 +380,6 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Use Mock Login',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      Switch(
-                        value: _useMockLogin,
-                        onChanged: (value) {
-                          setState(() {
-                            _useMockLogin = value;
-                          });
-                        },
-                        activeColor: const Color(0xFF1E88E5),
-                      ),
-                    ],
-                  ),
-                  
-                  if (_useMockLogin)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue[200]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Demo Accounts:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[900],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Customer: customer@test.com / customer123',
-                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                          ),
-                          Text(
-                            'Owner: owner@test.com / owner123',
-                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                          ),
-                          Text(
-                            'Driver: driver@test.com / driver123',
-                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                          ),
-                          Text(
-                            'Admin: admin@test.com / admin123',
-                            style: TextStyle(fontSize: 12, color: Colors.blue[900]),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),

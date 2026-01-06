@@ -17,12 +17,10 @@ import '/services/firebase_vehicle_service.dart';
 import '../../services/vehicle_revenue_tracking_service.dart';
 import '/models/vehicle.dart';
 import '/models/user.dart';
-import '../debug_everything_page.dart';
 import '../login_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:intl/intl.dart';
-import 'manual_revenue_backfill_page.dart';
 // ✅ NEW IMPORTS FOR SUBSCRIPTION
 import '../../services/subscription_service.dart';
 import '../../models/subscription.dart';
@@ -903,20 +901,12 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => ManageCompanyDriversPage(ownerId: widget.ownerId)));
                 }),
-                _buildDrawerItem(icon: Icons.sync, title: 'Revenue Backfill', color: Colors.green, onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ManualRevenueBackfillPage(ownerId: widget.ownerId)));
-                }),
                 const Divider(height: 1),
                 
                 Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text('SUPPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600]))),
                 _buildDrawerItem(icon: Icons.report_problem, title: 'Report Issue', color: Colors.red, onTap: () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (context) => OwnerReportPage(userId: widget.ownerId.toString(), userName: widget.ownerName)));
-                }),
-                _buildDrawerItem(icon: Icons.bug_report, title: 'Debug Tools', color: Colors.grey, onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DebugEverythingPage()));
                 }),
               ],
             ),
