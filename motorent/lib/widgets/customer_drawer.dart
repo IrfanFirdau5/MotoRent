@@ -1,5 +1,5 @@
 // FILE: motorent/lib/widgets/customer_drawer.dart
-// REPLACE THE ENTIRE FILE
+// UPDATED VERSION WITH PRIVACY DASHBOARD
 
 import 'package:flutter/material.dart';
 import '../models/user.dart';
@@ -8,6 +8,7 @@ import '../screens/customer/my_reviews_page.dart';
 import '../screens/customer/user_profile_page.dart';
 import '../screens/customer/customer_report_page.dart';
 import '../screens/customer/vehicle_listing_page.dart';
+import '../screens/customer/privacy_dashboard_page.dart';
 import '../services/auth_service.dart';
 import '../screens/login_page.dart';
 
@@ -158,6 +159,25 @@ class CustomerDrawer extends StatelessWidget {
                 const Divider(height: 1),
                 _buildDrawerItem(
                   context,
+                  icon: Icons.privacy_tip,
+                  title: 'Privacy Dashboard',
+                  subtitle: 'Manage your privacy settings',
+                  iconColor: const Color(0xFF7B1FA2), // Purple color for privacy
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PrivacyDashboardPage(
+                          userId: user.userIdString,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                _buildDrawerItem(
+                  context,
                   icon: Icons.report_problem,
                   title: 'Report Issue',
                   subtitle: 'Report app problems',
@@ -243,7 +263,6 @@ class CustomerDrawer extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          // ignore: deprecated_member_use
           color: (iconColor ?? const Color(0xFF1E88E5)).withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
