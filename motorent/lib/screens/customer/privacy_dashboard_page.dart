@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'privacy_policy_page.dart';
 import 'your_rights_page.dart';
+import 'delete_account_page.dart';
+import 'delete_specific_data_page.dart';
+import 'login_history_page.dart';
 
 class PrivacyDashboardPage extends StatefulWidget {
   final String userId;
@@ -368,7 +371,8 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
     return Column(
       children: [
         RadioListTile<String>(
-          title: const Text('During Rental Only', style: TextStyle(fontSize: 14)),
+          title:
+              const Text('During Rental Only', style: TextStyle(fontSize: 14)),
           subtitle: const Text(
             'Recommended',
             style: TextStyle(fontSize: 12, color: Colors.green),
@@ -748,13 +752,13 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
 
   void _updatePrivacyScore() {
     int score = 70; // Base score
-    
+
     if (_twoFactorEnabled) score += 10;
     if (!_analyticsPartners) score += 5;
     if (!_insurancePartners) score += 5;
     if (_locationService == 'rental_only') score += 5;
     if (_locationService == 'never') score += 10;
-    
+
     setState(() => _privacyScore = score.clamp(0, 100));
   }
 }
@@ -763,76 +767,81 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
 class MyDataPage extends StatelessWidget {
   final String userId;
   const MyDataPage({Key? key, required this.userId}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Data')),
-    body: const Center(child: Text('My Data Page - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('My Data')),
+        body: const Center(child: Text('My Data Page - To be implemented')),
+      );
 }
 
 class DataCorrectionPage extends StatelessWidget {
   final String userId;
   const DataCorrectionPage({Key? key, required this.userId}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Request Corrections')),
-    body: const Center(child: Text('Data Correction Page - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Request Corrections')),
+        body: const Center(
+            child: Text('Data Correction Page - To be implemented')),
+      );
 }
 
 class RecentDataAccessPage extends StatelessWidget {
   final String userId;
-  const RecentDataAccessPage({Key? key, required this.userId}) : super(key: key);
-  
+  const RecentDataAccessPage({Key? key, required this.userId})
+      : super(key: key);
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Recent Data Access')),
-    body: const Center(child: Text('Recent Data Access - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Recent Data Access')),
+        body:
+            const Center(child: Text('Recent Data Access - To be implemented')),
+      );
 }
 
 class ThirdPartyLogPage extends StatelessWidget {
   final String userId;
   const ThirdPartyLogPage({Key? key, required this.userId}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Third-Party Sharing Log')),
-    body: const Center(child: Text('Third-Party Log - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Third-Party Sharing Log')),
+        body: const Center(child: Text('Third-Party Log - To be implemented')),
+      );
 }
 
 class LoginHistoryPage extends StatelessWidget {
   final String userId;
   const LoginHistoryPage({Key? key, required this.userId}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Login History')),
-    body: const Center(child: Text('Login History - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Login History')),
+        body: const Center(child: Text('Login History - To be implemented')),
+      );
 }
 
 class DeleteSpecificDataPage extends StatelessWidget {
   final String userId;
-  const DeleteSpecificDataPage({Key? key, required this.userId}) : super(key: key);
-  
+  const DeleteSpecificDataPage({Key? key, required this.userId})
+      : super(key: key);
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Delete Specific Data')),
-    body: const Center(child: Text('Delete Specific Data - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Delete Specific Data')),
+        body: const Center(
+            child: Text('Delete Specific Data - To be implemented')),
+      );
 }
 
 class DeleteAccountPage extends StatelessWidget {
   final String userId;
   const DeleteAccountPage({Key? key, required this.userId}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Delete Account')),
-    body: const Center(child: Text('Delete Account - To be implemented')),
-  );
+        appBar: AppBar(title: const Text('Delete Account')),
+        body: const Center(child: Text('Delete Account - To be implemented')),
+      );
 }
