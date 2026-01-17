@@ -1,4 +1,5 @@
 // FILE: motorent/lib/screens/customer/privacy_dashboard_page.dart
+// REPLACE THE EXISTING FILE WITH THIS UPDATED VERSION
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -7,6 +8,13 @@ import 'your_rights_page.dart';
 import 'delete_account_page.dart';
 import 'delete_specific_data_page.dart';
 import 'login_history_page.dart';
+import 'delete_account_page.dart';
+import 'delete_specific_data_page.dart';
+import 'login_history_page.dart';
+import 'my_data_page.dart';
+import 'data_correction_page.dart';
+import 'recent_data_access_page.dart';
+import 'third_party_log_page.dart';
 
 class PrivacyDashboardPage extends StatefulWidget {
   final String userId;
@@ -196,7 +204,7 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
             icon: Icons.folder_outlined,
             title: '📁 My Data',
             subtitle: 'View all data we have about you',
-            onTap: () => _navigateToMyData(),
+            onTap: () => _navigateToMyData(), // ✅ FIXED
           ),
           const Divider(height: 1),
           _buildMenuTile(
@@ -210,7 +218,7 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
             icon: Icons.edit_outlined,
             title: 'Request corrections',
             subtitle: 'Fix incorrect information',
-            onTap: () => _requestCorrections(),
+            onTap: () => _requestCorrections(), // ✅ FIXED
           ),
         ],
       ),
@@ -355,7 +363,7 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
           Padding(
             padding: const EdgeInsets.only(left: 4, top: 4),
             child: Text(
-              '? $info',
+              'ℹ $info',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -420,10 +428,10 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
+          const Padding(
+            padding: EdgeInsets.all(16),
             child: Row(
-              children: const [
+              children: [
                 Text(
                   '👁️ Privacy Activity',
                   style: TextStyle(
@@ -439,14 +447,14 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
             icon: Icons.history,
             title: 'Recent data access',
             subtitle: 'Who viewed your information',
-            onTap: () => _showRecentDataAccess(),
+            onTap: () => _showRecentDataAccess(), // ✅ FIXED
           ),
           const Divider(height: 1),
           _buildMenuTile(
             icon: Icons.share_outlined,
             title: 'Third-party sharing log',
             subtitle: 'External services we shared with',
-            onTap: () => _showThirdPartyLog(),
+            onTap: () => _showThirdPartyLog(), // ✅ FIXED
           ),
           const Divider(height: 1),
           _buildMenuTile(
@@ -466,10 +474,10 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
+          const Padding(
+            padding: EdgeInsets.all(16),
             child: Row(
-              children: const [
+              children: [
                 Text(
                   '🗑️ Manage My Data',
                   style: TextStyle(
@@ -507,10 +515,10 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
+          const Padding(
+            padding: EdgeInsets.all(16),
             child: Row(
-              children: const [
+              children: [
                 Text(
                   '📧 Privacy Support',
                   style: TextStyle(
@@ -569,7 +577,8 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
     );
   }
 
-  // Navigation and Action Methods
+  // ✅ UPDATED NAVIGATION METHODS
+
   void _navigateToMyData() {
     Navigator.push(
       context,
@@ -668,17 +677,17 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Contact Privacy Team'),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Get in touch with our privacy team:'),
-            const SizedBox(height: 16),
-            const Text('📧 Email: privacy@motorent.com'),
-            const SizedBox(height: 8),
-            const Text('📞 Phone: +60 3-1234 5678'),
-            const SizedBox(height: 8),
-            const Text('⏰ Hours: Mon-Fri, 9AM-6PM MYT'),
+            Text('Get in touch with our privacy team:'),
+            SizedBox(height: 16),
+            Text('📧 Email: privacy@motorent.com'),
+            SizedBox(height: 8),
+            Text('📞 Phone: +60 3-1234 5678'),
+            SizedBox(height: 8),
+            Text('⏰ Hours: Mon-Fri, 9AM-6PM MYT'),
           ],
         ),
         actions: [
@@ -742,7 +751,6 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
   }
 
   void _scrollToPrivacySettings() {
-    // In a real implementation, you would scroll to the settings section
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Review your data sharing settings below'),
@@ -761,87 +769,4 @@ class _PrivacyDashboardPageState extends State<PrivacyDashboardPage> {
 
     setState(() => _privacyScore = score.clamp(0, 100));
   }
-}
-
-// Placeholder pages - implement these with actual functionality
-class MyDataPage extends StatelessWidget {
-  final String userId;
-  const MyDataPage({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('My Data')),
-        body: const Center(child: Text('My Data Page - To be implemented')),
-      );
-}
-
-class DataCorrectionPage extends StatelessWidget {
-  final String userId;
-  const DataCorrectionPage({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Request Corrections')),
-        body: const Center(
-            child: Text('Data Correction Page - To be implemented')),
-      );
-}
-
-class RecentDataAccessPage extends StatelessWidget {
-  final String userId;
-  const RecentDataAccessPage({Key? key, required this.userId})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Recent Data Access')),
-        body:
-            const Center(child: Text('Recent Data Access - To be implemented')),
-      );
-}
-
-class ThirdPartyLogPage extends StatelessWidget {
-  final String userId;
-  const ThirdPartyLogPage({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Third-Party Sharing Log')),
-        body: const Center(child: Text('Third-Party Log - To be implemented')),
-      );
-}
-
-class LoginHistoryPage extends StatelessWidget {
-  final String userId;
-  const LoginHistoryPage({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Login History')),
-        body: const Center(child: Text('Login History - To be implemented')),
-      );
-}
-
-class DeleteSpecificDataPage extends StatelessWidget {
-  final String userId;
-  const DeleteSpecificDataPage({Key? key, required this.userId})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Delete Specific Data')),
-        body: const Center(
-            child: Text('Delete Specific Data - To be implemented')),
-      );
-}
-
-class DeleteAccountPage extends StatelessWidget {
-  final String userId;
-  const DeleteAccountPage({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Delete Account')),
-        body: const Center(child: Text('Delete Account - To be implemented')),
-      );
 }
